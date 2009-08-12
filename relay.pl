@@ -21,6 +21,11 @@ $portObj->write($cmd1);
 $portObj->write($cmd2);
 $portObj->are_match();
 $portObj->lookclear;
-my $chars = $portObj->read(255);
-print $chars;
 
+$my gotit = "";
+until ("" ne $gotit) {
+ $gotit = $portObj->lookfor;
+ die "Aborted without match\n" unless (defined $gotit);
+}
+
+print $gotit;
