@@ -8,7 +8,7 @@ my $port = "/dev/ttyS0";
 my $PORT;
 
 sysopen($PORT, $port, O_RDWR | O_NONBLOCK) || die "can not open $port: $!\n";
-my $ofh = select($PORT); $| = 1; select($ofh);
+select((select($PORT), $|=1)[0]);
 
 print $PORT chr(254);
 print $PORT chr(27); # 27 enables reporting - should send back 85
