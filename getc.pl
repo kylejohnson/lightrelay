@@ -8,12 +8,12 @@ my $port = "/dev/ttyS0";
 my $PORT;
 
 sysopen($PORT, $port, O_RDWR | O_NONBLOCK) || die "can not open $port: $!\n";
-select((select($PORT), $|=1)[0]);
+select((select($PORT), $|=1)[0]); # Make $PORT hot
 
-print $PORT chr(254);
-print $PORT chr(27); # 27 enables reporting - should send back 85
+print $PORT chr(254); # 254 tells the device to listen for commands
+print $PORT chr(27); # 27 enables reporting and should send back 85
 
-my $char = getc($PORT);
-print ord($char);
+my $char = getc($PORT); # Get the respond (85)
+print ord($char) . "\n"; # Print the response
 
 close($PORT);
