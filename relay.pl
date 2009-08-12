@@ -21,6 +21,6 @@ $portObj->write($cmd1);
 $portObj->write($cmd2);
 $portObj->are_match();
 $portObj->lookclear;
-$portObj->read(255);
-
+my $chars = $portObj->read(255);
+print $chars;
 
