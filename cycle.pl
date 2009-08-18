@@ -12,7 +12,10 @@ while ($count <= 157) {
  print $DEV $cmd;
  print $DEV chr($count);
  my $result = ord(getc($DEV));
- if ($result != 255) {
+ if ($result == 255) {
+  my $voltage = 0;
+  print $voltage . " Volts\n";
+ } else {
   my $voltage = ($result * 0.019607);
   print $voltage . " Volts\n";
  }
