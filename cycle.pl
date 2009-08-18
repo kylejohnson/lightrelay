@@ -11,8 +11,11 @@ open(my $DEV, "+<", $port) || die "Can't open $port: $!\n";
 while ($count <= 157) {
  print $DEV $cmd;
  print $DEV chr($count);
- my $result = getc($DEV);
- print ord($result) . "\n";
+ my $result = ord(getc($DEV));
+ if ($result != 255) {
+  my $voltage = ($result * 0.019607);
+  print $voltage . " Volts\n";
+ }
  $count++;
 }
 close($DEV);
