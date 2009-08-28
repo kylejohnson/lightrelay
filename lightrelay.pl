@@ -7,7 +7,7 @@ use DBI;
 use DBD::mysql;
 
 #### Config Options ####
-my $port = "/dev/ttyS0";
+my $port = "/dev/ttyUSB0";
 my $bank = 0; # Bank number which relays on device belong to
 our $color = 'green'; # Set initial color to Green
 my $logfile = "/var/log/lightrelay.log"; # Where to output color changes to
@@ -22,6 +22,7 @@ my $off_amber = 101;
 my $on_red = 110;
 my $off_red = 102;
 my $pid = "/tmp/lightrelay.pid";
+our $PORT;
 # Database Options #
 my $host = 'localhost';
 my $database = 'lightrelay';
@@ -64,10 +65,9 @@ if ($command eq 'restart') {
 }
 
 if ($command eq 'start') {
- system("/bin/echo $$ > $pid") == 0 or warn "can not create pid file $pid";
- system("/bin/stty $baud < $port") == 0 or die "can not set device settings on $port"; # Set baud speeds, etc, for serial device
-# &turn_relays_off(); # Set all relays to Off, as they default to On
- open(SERIALPORT, "+<", "$port") or die "can not open device $port"; # Open the serial port for writing and reading
+ system("/bin/echo $$ > $pid") == 0 || warn("Can't create PID file $pid: $!\n");
+ system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $port") == 0 || die "$!\n";
+ open($PORT, "+<", "$port") || die("Can't open $port: $!\n");
 
 POE::Session->create(
  inline_states => {
@@ -107,35 +107,35 @@ POE::Session->create(
 
 sub turned_color {
  $color = "$_[2]"; # Set color to Green, Amber or Red
- &send_signals($_[0],$_[1]); # Call sub to change relay status
+ &send_signals($_[0],$_[1]);
  &log($_[3]);
 }
 
 sub send_signals {
- select((select(SERIALPORT), $|=1)[0]);
- print SERIALPORT chr(254); # Enter Command Mode
- print SERIALPORT chr($_[0]); # Deactivate Previous Relay
- print SERIALPORT chr($bank); # In Bank 1
- select(undef,undef,undef,.1); # Can not sleep() < 1, so we use select()'s timeout
- print SERIALPORT chr(254); # Enter Command Mode
- print SERIALPORT chr($_[1]); # Activate Current Relay
- print SERIALPORT chr($bank); # In Bank 1
+ select((select($PORT), $|=1)[0]);
+ print $PORT chr(254); # Enter Command Mode
+ print $PORT chr($_[0]); # Deactivate Previous Relay
+ print $PORT chr($bank); # In Bank 1
+ select(undef,undef,undef,.1); # Sleep for .1sec
+ print $PORT chr(254); # Enter Command Mode
+ print $PORT chr($_[1]); # Activate Current Relay
+ print $PORT chr($bank); # In Bank 1
 }
 
 sub log {
  my $state = $_[0];
- #open(LOGFILE, ">>", "$logfile") or warn "can not open logfile $logfile"; # Open our log file for writing
- #print LOGFILE "$now\t $state\n";
- #close(LOGFILE);
- my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
- my $time = time();
- my $query = $connect->prepare("INSERT INTO history (color, epoch) VALUES ('$state', '$time()')");
- $query->execute();
+ open(my $LOGFILE, ">>", "$logfile") or warn "can not open logfile $logfile"; # Open our log file for writing
+ print $LOGFILE "$state\n";
+ close($LOGFILE);
+ #my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
+ #my $time = time();
+ #my $query = $connect->prepare("INSERT INTO history (color, epoch) VALUES ('$state', '$time()')");
+ #$query->execute();
 }
 
 sub turn_relays_off {
- open(SERIALPORT, "+<", "$port") or die "can not open device $port"; # Open the serial port for writing and reading
- print SERIALPORT chr(254);
- print SERIALPORT chr(29);
- close(SERIALPORT);
+ open($PORT, "+<", "$port") || die("Can't open port $port: $!\n");
+ print $PORT chr(254);
+ print $PORT chr(29);
+ close($PORT);
 }
