@@ -38,7 +38,7 @@ while (1 == 1) { # Loop
    &Poll(1); # Poll puck 2 again
   }
  } else {
-  select(undef,undef,undef,.1);
+  select(undef,undef,undef,$polltime);
   &Poll(0); # Poll puck 1 again
  }
 }
