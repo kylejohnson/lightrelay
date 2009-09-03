@@ -28,7 +28,7 @@ my $host = 'localhost';
 my $database = 'lightrelay';
 my $table = 'history';
 my $user = 'lightrelay';
-my $password = 'robot';
+my $password = '';
 my $dsn = "dbi:mysql:$database:$host";
 
 
