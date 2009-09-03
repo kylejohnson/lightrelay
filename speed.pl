@@ -21,16 +21,19 @@ my $dev = "/dev/ttyUSB0";
 my $distance = 12; # Distance in feet between pucks
 my $polltime = .032;
 my ($voltage, $time1, $time2);
+my $limit = 45;
 
 open(my $DEV, "+<", $dev) || die($!);
 
 &Poll(0); # Poll puck 1
 
 while (1 == 1) { # Loop
- if ($voltage <= 130 && $voltage != 255) { # Puck 1 voltage is <= 130
+ if ($voltage <= $limit && $voltage != 255) { # Puck 1 voltage is <= 130
+  print "voltage1 " . $voltage * 0.019607 . "\n";
   $time1 = time;
   &Poll(1); # Poll puck 2
-  if ($voltage <= 130 && $voltage != 255) { # Puck 2 voltage is <= 130
+  if ($voltage <= $limit && $voltage != 255) { # Puck 2 voltage is <= 130
+  print "voltage2 " . $voltage * 0.019607 . "\n";
    $time2 =  time;
    &CalculateSpeed();
   } else {
@@ -51,10 +54,14 @@ sub Poll {
 }
 
 sub CalculateSpeed {
+ print "time1 $time1\n";
+ print "time2 $time2\n";
  my $time = $time2 - $time1;
+ print "time $time\n";
  my $fps = $distance / $time;
+ print "fps $fps\n";
  my $mph = (($fps * 60) * 60) / 5280;
- print "$mph mph\n";
+ print "$mph mph\n\n";
 }
 
 close($DEV);
