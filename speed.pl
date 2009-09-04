@@ -7,9 +7,9 @@
 # relay to an access point, which connects to our PROXR board.  Each puck
 # has it's own channel (P1 -> C1; P2 -> C2).  When a puck is not detecting
 # a vehicle, it outputs ~3.8v.  When a vehicle is detected, the puck outputs
-# <~.5v.  So when P1 voltage drops below 130 (how PROXR reports voltages,
+# <~.5v.  So when P1 voltage drops below $limit (how PROXR reports voltages,
 # before the Analog to Digital (A2D) conversion), record $time1, start polling
-# P2.  When P2 drops below 130, record $time2, and then calculate the speed
+# P2.  When P2 drops below $limit, record $time2, and then calculate the speed
 # of the vehicle.
 #
 
@@ -28,11 +28,11 @@ open(my $DEV, "+<", $dev) || die($!);
 &Poll(0); # Poll puck 1
 
 while (1 == 1) { # Loop
- if ($voltage <= $limit && $voltage != 255) { # Puck 1 voltage is <= 130
+ if ($voltage <= $limit && $voltage != 255) {
   print "voltage1 " . $voltage * 0.019607 . "\n";
   $time1 = time;
   &Poll(1); # Poll puck 2
-  if ($voltage <= $limit && $voltage != 255) { # Puck 2 voltage is <= 130
+  if ($voltage <= $limit && $voltage != 255) {
   print "voltage2 " . $voltage * 0.019607 . "\n";
    $time2 =  time;
    &CalculateSpeed();
@@ -60,7 +60,7 @@ sub CalculateSpeed {
  print "time $time\n";
  my $fps = $distance / $time;
  print "fps $fps\n";
- my $mph = (($fps * 60) * 60) / 5280;
+ my $mph = (($fps * 60) * 60) / 5280; # Or just $fps * .682?
  print "$mph mph\n\n";
 }
 

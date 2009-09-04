@@ -15,8 +15,8 @@ our $polltime = .032;
 my $baud = 115200;
 my $row = 0;
 
-system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $port") == 0 || die "Can't stty: $!\n";
-open(my $DEV, "+<", $port) || die "Can't open $port: $!\n";
+system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $port") == 0 || die($!);
+open(my $DEV, "+<", $port) || die($!);
 
 while ($count < (150 + $chans)) {
  print $DEV chr(254);
