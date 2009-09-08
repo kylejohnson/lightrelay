@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-my $port = "/dev/ttyUSB0";
+my $port = "/dev/ttyS0";
 
 open (SERIALPORT, "+<", "$port") or die "can't open $port. ";
 print SERIALPORT chr(254);

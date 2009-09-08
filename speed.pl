@@ -17,17 +17,19 @@ use strict;
 use warnings;
 use Time::HiRes qw(time);
 
-my $dev = "/dev/ttyUSB0";
+my $dev = "/dev/ttyS0";
 my $distance = 12; # Distance in feet between pucks
 my $polltime = .032;
 my ($voltage, $time1, $time2);
 my $limit = 45;
+my $baud = 115200;
 
+system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $dev") == 0 || die "$!\n";
 open(my $DEV, "+<", $dev) || die($!);
 
 &Poll(0); # Poll puck 1
 
-while (1 == 1) { # Loop
+while () { # Loop
  if ($voltage <= $limit && $voltage != 255) {
   print "voltage1 " . $voltage * 0.019607 . "\n";
   $time1 = time;
