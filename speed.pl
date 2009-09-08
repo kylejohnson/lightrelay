@@ -17,14 +17,15 @@ use strict;
 use warnings;
 use Time::HiRes qw(time);
 
-my $dev = "/dev/ttyS0";
+my $dev = "/dev/ttyUSB0";
 my $distance = 12; # Distance in feet between pucks
 my $polltime = .032;
 my ($voltage, $time1, $time2);
 my $limit = 45;
 my $baud = 115200;
+my $timeout = 2; # Poll puck 2 for only this long
 
-system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $dev") == 0 || die "$!\n";
+system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $dev") == 0 || die($!);
 open(my $DEV, "+<", $dev) || die($!);
 
 &Poll(0); # Poll puck 1
@@ -34,17 +35,19 @@ while () { # Loop
   print "voltage1 " . $voltage * 0.019607 . "\n";
   $time1 = time;
   &Poll(1); # Poll puck 2
-  if ($voltage <= $limit && $voltage != 255) {
-  print "voltage2 " . $voltage * 0.019607 . "\n";
-   $time2 =  time;
-   &CalculateSpeed();
-  } else {
-   select(undef,undef,undef,$polltime);
-   &Poll(1); # Poll puck 2 again
-  }
- } else {
+  while ((time - $time1) < $timeout) { # For $timeout
+   if ($voltage <= $limit && $voltage != 255) {
+    print "voltage2 " . $voltage * 0.019607 . "\n";
+    $time2 = time;
+    &CalculateSpeed();
+   } else { # Poll puck 2 again
+    select(undef,undef,undef,$polltime);
+    &Poll(1);
+   }
+  } # end timeout
+ } else { # Poll puck 1 again
   select(undef,undef,undef,$polltime);
-  &Poll(0); # Poll puck 1 again
+  &Poll(0);
  }
 }
 
