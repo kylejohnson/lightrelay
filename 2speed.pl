@@ -31,20 +31,20 @@ open(my $DEV, "+<", $dev) || die($!);
 &Poll(0); # Poll puck 1
 
 while () { # Loop
- if ($voltage <= $limit && $voltage != 255) {
+ if ($voltage != 255) {
   print "voltage1 " . $voltage * 0.019607 . "\n";
   $time1 = time;
   &Poll(1); # Poll puck 2
-#  while ((time - $time1) < $timeout) { # For $timeout
-   if ($voltage <= $limit && $voltage != 255) {
+  while ((time - $time1) < $timeout) { # For $timeout
+   if ($voltage != 255) {
     print "voltage2 " . $voltage * 0.019607 . "\n";
     $time2 = time;
     &CalculateSpeed();
    } else { # Poll puck 2 again
-    select(undef,undef,undef,.1);
+    select(undef,undef,undef,$polltime);
     &Poll(1);
    }
- # } # end timeout
+  } # end timeout
  } else { # Poll puck 1 again
   select(undef,undef,undef,$polltime);
   &Poll(0);
@@ -67,6 +67,7 @@ sub CalculateSpeed {
  print "fps $fps\n";
  my $mph = (($fps * 60) * 60) / 5280; # Or just $fps * .682?
  print "$mph mph\n\n";
+ exit;
 }
 
 close($DEV);
