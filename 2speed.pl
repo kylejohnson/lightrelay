@@ -17,41 +17,34 @@ use strict;
 use warnings;
 use Time::HiRes qw(time);
 
-my $dev = "/dev/ttyS0";
+my $dev = "/dev/ttyUSB0";
 my $distance = 20; # Distance in feet between pucks
 my $polltime = .032;
-my ($voltage, $time1, $time2);
+my ($time1, $time2);
 my $limit = 45;
 my $baud = 115200;
 my $timeout = 2; # Poll puck 2 for only this long
+my $voltage = 255;
 
 system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $dev") == 0 || die($!);
 open(my $DEV, "+<", $dev) || die($!);
 
-&Poll(0); # Poll puck 1
-
-while () { # Loop
- if ($voltage != 255) {
-  print "voltage1 " . $voltage * 0.019607 . "\n";
-  $time1 = time;
-  &Poll(1); # Poll puck 2
-  while ((time - $time1) < $timeout) { # For $timeout
-   if ($voltage != 255) {
-    print "voltage2 " . $voltage * 0.019607 . "\n";
-    $time2 = time;
-    &CalculateSpeed();
-   } else { # Poll puck 2 again
-    select(undef,undef,undef,$polltime);
-    &Poll(1);
-   }
-  } # end timeout
- } else { # Poll puck 1 again
-  select(undef,undef,undef,$polltime);
-  &Poll(0);
- }
+while ($voltage == 255) {
+ &Poll(0);
 }
+$time1 = time;
+$voltage = 255;
+
+while ($voltage == 255) {
+ &Poll(1);
+}
+$time2 = time;
+
+&CalculateSpeed();
+
 
 sub Poll {
+ select(undef,undef,undef,$polltime);
  my $cmd = 150 + $_[0];
  print $DEV chr(254);
  print $DEV chr($cmd);
@@ -67,7 +60,6 @@ sub CalculateSpeed {
  print "fps $fps\n";
  my $mph = (($fps * 60) * 60) / 5280; # Or just $fps * .682?
  print "$mph mph\n\n";
- exit;
 }
 
 close($DEV);
