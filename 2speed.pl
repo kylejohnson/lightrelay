@@ -30,15 +30,24 @@ system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iex
 open(my $DEV, "+<", $dev) || die($!);
 
 while ($voltage > $limit) {
+ print "Pollling 1...\n";
  &Poll(0);
+ print "1 is $voltage\n";
 }
+print "Setting time1...\n";
 $time1 = time;
+print "Time1 is $time1\n";
 $voltage = 255;
 
+
 while ($voltage > $limit) {
+ print "Polling 2...\n";
  &Poll(1);
+ print "2 is $voltage\n";
 }
+print "Setting time2...\n";
 $time2 = time;
+print "Time2 is $time2\n";
 
 &CalculateSpeed();
 
@@ -49,7 +58,6 @@ sub Poll {
  print $DEV chr(254);
  print $DEV chr($cmd);
  $voltage = ord(getc($DEV));
- #print "$cmd\t $voltage\n";
 }
 
 sub CalculateSpeed {
