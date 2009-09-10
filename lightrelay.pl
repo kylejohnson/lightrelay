@@ -5,6 +5,7 @@ use warnings;
 use POE qw(Wheel::FollowTail);
 use DBI;
 use DBD::mysql;
+use Time::HiRes;
 
 #### Config Options ####
 my $port = "/dev/ttyUSB0";
@@ -104,6 +105,11 @@ POE::Session->create(
  POE::Kernel->run();
 }
 
+
+Sub do_stuff {
+ if 
+ &turned_color($_[0],$_[1],$_[2],$_[3]);
+}
 
 sub turned_color {
  $color = "$_[2]"; # Set color to Green, Amber or Red
