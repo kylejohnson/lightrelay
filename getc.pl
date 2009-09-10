@@ -3,11 +3,12 @@
 use strict;
 use warnings;
 
-my $port = "/dev/ttyS0";
+my $port = "/dev/ttyUSB0";
+my $cmd = shift;
 
-open (SERIALPORT, "+<", "$port") or die "can't open $port. ";
+open (SERIALPORT, "+<", "$port") || ($!);
 print SERIALPORT chr(254);
-print SERIALPORT chr(27);
+print SERIALPORT chr($cmd);
 my $result = getc(SERIALPORT);
 print ord($result) . "\n";
 
