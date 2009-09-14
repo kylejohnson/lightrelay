@@ -41,7 +41,6 @@ POE::Session->create(
   got_log_line => \&got_log_line,
   do_stuff => \&do_stuff,
   detect_traffic => \&detect_traffic,
-  switch_relay => \&switch_relay,
   send_cmd => \&send_cmd,
   trigger_zm => \&trigger_zm,
   calculate_speed => \&calculate_speed,
