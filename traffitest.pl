@@ -11,11 +11,11 @@ my $baud = 115200;
 my $color = 'green'; # Set initial color to Green
 my $detect = 'off';
 my $distance = 8.3; # Distance in feet between pucks
-my $filename = "dbgpipe.log"; # The file for this script to monitor
+my $filename = "/var/www/zm/events/stop-light/dbgpipe.log"; # The file for this script to monitor
 my $limit = 45; # Voltage limit while polling for traffic
 my $logfile = "/var/log/lightrelay.log"; # Where to output color changes to
 my $polltime = .032;
-my $port = "/dev/ttyUSB0";
+my $port = "/dev/ttyS0";
 my $sleeptime = .1;
 my ($time1, $time2);
 my $on_green = 108;
@@ -42,7 +42,7 @@ POE::Session->create(
   do_stuff => \&do_stuff,
   detect_traffic => \&detect_traffic,
   switch_relay => \&switch_relay,
-  poll => \&poll,
+  send_cmd => \&send_cmd,
   trigger_zm => \&trigger_zm,
   calculate_speed => \&calculate_speed,
  }
@@ -75,26 +75,26 @@ sub got_log_line {
 sub do_stuff {
  my ($kernel, $heap, $off, $on, $arg2, $state) = @_[KERNEL, HEAP, ARG0, ARG1, ARG2, ARG3];
  $color = $arg2;
- print "$color\n";
+ print "Color is now $color\n";
 
- $kernel->yield("send_cmd", $off);
- $kernel->yield("send_cmd", $on);
+ #$kernel->yield("send_cmd", $off);
+ #$kernel->yield("send_cmd", $on);
  $kernel->yield("detect_traffic");
  #log($_[3]);
 }
 
 sub detect_traffic {
  my ($kernel, $heap) = @_[KERNEL, HEAP];
- print "Detecting speed...\n";
  $heap->{voltage} = 255;
+
  if ($heap->{voltage} > $limit) {
-  $kernel->yield("send_cmd",150);
+  $kernel->yield("send_cmd", 150);
  }
  $time1 = time;
  $heap->{voltage} = 255;
 
  if ($heap->{voltage} > $limit) {
-  $kernel->yield("send_cmd",151);
+  $kernel->yield("send_cmd", 151);
  }
  $time2 = time;
 
@@ -123,12 +123,16 @@ sub log {
 sub send_cmd {
  my ($kernel, $heap, $arg) = @_[KERNEL, HEAP, ARG0];
  select((select($PORT), $|=1)[0]);
+ select(undef,undef,undef,.1);
  print $PORT chr(254);
  if ($arg >= 100 && $arg <= 115) { # Switch a relay.  No response.
   print $PORT chr($arg);
   print $PORT chr($bank);
  } elsif ($arg >= 150 && $arg <= 157) { # Read a channel.  Response.
   print $PORT chr($arg);
+  print "argument is $arg\n";
   $heap->{voltage} = ord(getc($PORT));
+  #$voltage = ord(getc($PORT));;
+  print "voltage is $heap->{voltage}\n";
  }
 }
