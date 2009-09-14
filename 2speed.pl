@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Time::HiRes qw(time);
 
-my $dev = "/dev/ttyS0";
+my $dev = "/dev/ttyUSB0";
 my $distance = 8.3; # Distance in feet between pucks
 my $polltime = .032;
 my ($time1, $time2);

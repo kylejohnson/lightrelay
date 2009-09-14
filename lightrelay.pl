@@ -5,14 +5,13 @@ use warnings;
 use POE qw(Wheel::FollowTail);
 use DBI;
 use DBD::mysql;
-use Time::HiRes;
 
 #### Config Options ####
 my $port = "/dev/ttyUSB0";
 my $bank = 0; # Bank number which relays on device belong to
 our $color = 'green'; # Set initial color to Green
 my $logfile = "/var/log/lightrelay.log"; # Where to output color changes to
-my $filename = "/var/www/zm/events/2/dbgpipe.log"; # The file for this script to monitor
+my $filename = "dbgpipe.log"; # The file for this script to monitor
 my $baud = 38400;
 my $command = shift;
 our ($green, $amber, $red, $lgreen) = time();
@@ -29,7 +28,7 @@ my $host = 'localhost';
 my $database = 'lightrelay';
 my $table = 'history';
 my $user = 'lightrelay';
-my $password = '';
+my $password = 'robot';
 my $dsn = "dbi:mysql:$database:$host";
 
 
@@ -106,15 +105,10 @@ POE::Session->create(
 }
 
 
-Sub do_stuff {
- if 
- &turned_color($_[0],$_[1],$_[2],$_[3]);
-}
-
 sub turned_color {
  $color = "$_[2]"; # Set color to Green, Amber or Red
  &send_signals($_[0],$_[1]);
- &log($_[3]);
+# &log($_[3]);
 }
 
 sub send_signals {
@@ -130,13 +124,13 @@ sub send_signals {
 
 sub log {
  my $state = $_[0];
- open(my $LOGFILE, ">>", "$logfile") or warn "can not open logfile $logfile"; # Open our log file for writing
- print $LOGFILE "$state\n";
- close($LOGFILE);
- #my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
- #my $time = time();
- #my $query = $connect->prepare("INSERT INTO history (color, epoch) VALUES ('$state', '$time()')");
- #$query->execute();
+ #open(my $LOGFILE, ">>", "$logfile") or warn "can not open logfile $logfile"; # Open our log file for writing
+ #print $LOGFILE "$state\n";
+ #close($LOGFILE);
+ my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
+ my $time = time();
+ my $query = $connect->prepare("INSERT INTO history (color, epoch) VALUES ('$state', '$time()')");
+ $query->execute();
 }
 
 sub turn_relays_off {
