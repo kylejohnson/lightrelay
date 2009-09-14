@@ -18,7 +18,6 @@ my $polltime = .032;
 my $port = "/dev/ttyUSB0";
 my $sleeptime = .1;
 my ($time1, $time2);
-my $voltage = 255;
 my $on_green = 108;
 my $off_green = 100;
 my $on_amber = 109;
@@ -78,47 +77,29 @@ sub do_stuff {
  $color = $arg2;
  print "$color\n";
 
- $kernel->yield("switch_relay", $off, $on);
+ $kernel->yield("send_cmd", $off);
+ $kernel->yield("send_cmd", $on);
  $kernel->yield("detect_traffic");
  #log($_[3]);
 }
 
-sub switch_relay {
- my ($kernel, $heap, $off, $on) = @_[KERNEL, HEAP, ARG0, ARG1];
- select((select($PORT), $|=1)[0]);
- print $PORT chr(254); # Enter Command Mode
- print $PORT chr($off); # Deactivate Previous Relay
- print $PORT chr($bank); # In Bank 1
- select(undef,undef,undef,1); # Sleep for .1sec
- print $PORT chr(254); # Enter Command Mode
- print $PORT chr($on); # Activate Current Relay
- print $PORT chr($bank); # In Bank 1
-}
-
 sub detect_traffic {
  my ($kernel, $heap) = @_[KERNEL, HEAP];
-  while ($voltage > $limit) {
-   $kernel->yield("poll",0);
-  }
-  $time1 = time;
-  $voltage = 255;
+ print "Detecting speed...\n";
+ $heap->{voltage} = 255;
+ if ($heap->{voltage} > $limit) {
+  $kernel->yield("send_cmd",150);
+ }
+ $time1 = time;
+ $heap->{voltage} = 255;
 
-  while ($voltage > $limit) {
-   $kernel->yield("poll",1);
-  }
-  $time2 = time;
+ if ($heap->{voltage} > $limit) {
+  $kernel->yield("send_cmd",151);
+ }
+ $time2 = time;
 
-  kernel->yield("trigger_zm");
-  kernel->yield("calculate_speed");
-}
-
-sub poll {
- my ($kernel, $heap, $arg) = @_[KERNEL, HEAP, ARG0];
- select((select($PORT), $|=1)[0]);
- my $cmd = 150 + $arg;
- print $PORT chr(254);
- print $PORT chr($cmd);
- $voltage = ord(getc($PORT));
+# $kernel->yield("trigger_zm");
+ $kernel->yield("calculate_speed");
 }
 
 sub calculate_speed {
@@ -127,7 +108,6 @@ sub calculate_speed {
  my $fps = $distance / $time;
  my $mph = (($fps * 60) * 60) / 5280;
 }
-
 
 sub trigger_zm {
  my ($kernel, $heap) = @_[KERNEL, HEAP];
@@ -141,9 +121,14 @@ sub log {
 }
 
 sub send_cmd {
- # Need to take into account number of commands sent.
- # I.e. 254, 150, 1 or 254, 27
+ my ($kernel, $heap, $arg) = @_[KERNEL, HEAP, ARG0];
  select((select($PORT), $|=1)[0]);
  print $PORT chr(254);
- print $port
+ if ($arg >= 100 && $arg <= 115) { # Switch a relay.  No response.
+  print $PORT chr($arg);
+  print $PORT chr($bank);
+ } elsif ($arg >= 150 && $arg <= 157) { # Read a channel.  Response.
+  print $PORT chr($arg);
+  $heap->{voltage} = ord(getc($PORT));
+ }
 }
