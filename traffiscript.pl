@@ -9,13 +9,13 @@ use Time::HiRes;
 my $bank = 1; # Bank number which relays on device belong to
 my $baud = 115200;
 my $color = 'green'; # Set initial color to Green
-my $detect :shared = 'off';
+my $detect = 'off';
 my $distance = 8.3; # Distance in feet between pucks
-my $filename = "/var/www/zm/events/stop-light/dbgpipe.log"; # The file for this script to monitor
+my $filename = "dbgpipe.log"; # The file for this script to monitor
 my $limit = 45; # Voltage limit while polling for traffic
 my $logfile = "/var/log/lightrelay.log"; # Where to output color changes to
 my $polltime = .032;
-my $port = "/dev/ttyS0";
+my $port = "/dev/ttyUSB0";
 my $sleeptime = .1;
 my ($time1, $time2);
 my $voltage = 255;
@@ -35,43 +35,88 @@ POE::Session->create(
  inline_states => {
   _start => \&server_start,
   got_log_line => \&got_log_line,
+  do_stuff => \&do_stuff,
+  detect_traffic => \&detect_traffic,
+  switch_relay => \&switch_relay,
+  poll => \&switch_relay,
+  trigger_zm => \&trigger_zm,
+  calculate_speed => \&calculate_speed,
  }
 );
+
 POE::Kernel->run();
+exit;
 
 sub server_start {
+ my ($kernel, $heap) = @_[KERNEL, HEAP];
  $_[HEAP]{tailor} = POE::Wheel::FollowTail->new(
   Filename => "$filename",
   InputEvent => "got_log_line",
  );
  print "Server started\n";
+}
+ 
+sub got_log_line {
+ my ($kernel, $heap) = @_[KERNEL, HEAP];
+ print "$_[ARG0]\n";
+ if ($_[ARG0] =~ /Green.*alarmed/ && $color eq 'red') # Color is red; green alarms...
+ {
+  $kernel->yield("do_stuff", $off_red, $on_green, 'green', 'Green');
+ }
+ elsif ($_[ARG0] =~ /LG.*alarmed/ && $color eq 'red') # Color is red; left green alarms...
+ {
+  $kernel->yield("do_stuff", $off_red, $on_green, 'green', 'Left Green');
+ }
+ elsif ($_[ARG0] =~ /Amber.*alarmed/ && $color eq 'green') # Color is green; amber alarms...
+ {
+  $kernel->yield("do_stuff", $off_green, $on_amber, 'amber', 'Amber');
+ }
+ elsif ($_[ARG0] =~ /Red.*alarmed/ && $color eq 'amber') # Color is amber; red alarms...
+ {
+  $kernel->yield("do_stuff", $off_amber, $on_red, 'red', 'Red');
+ }
+}
 
 sub do_stuff {
-$color = $_[2]; # Set color
+ my ($kernel, $heap) = @_[KERNEL, HEAP];
+ $color = $_[2]; # Set color
 
-switch_relay($_[0],$_[1]);
-DetectTraffic();
-#log($_[3]);
-}
+ $kernel->yield("switch_relay", ($_[0], $_[1]));
+ #$kernel->yield("detect_traffic");
+ #log($_[3]);
 }
 
-sub DetectTraffic {
+sub switch_relay {
+ my ($kernel, $heap) = @_[KERNEL, HEAP];
+ select((select($PORT), $|=1)[0]);
+ print $PORT chr(254); # Enter Command Mode
+ print $PORT chr($_[0]); # Deactivate Previous Relay
+ print $PORT chr($bank); # In Bank 1
+ select(undef,undef,undef,1); # Sleep for .1sec
+ print $PORT chr(254); # Enter Command Mode
+ print $PORT chr($_[1]); # Activate Current Relay
+ print $PORT chr($bank); # In Bank 1
+}
+
+sub detect_traffic {
+ my ($kernel, $heap) = @_[KERNEL, HEAP];
   while ($voltage > $limit) {
-   Poll(0);
+   $kernel->yield("poll",0);
   }
   $time1 = time;
   $voltage = 255;
 
   while ($voltage > $limit) {
-   Poll(1);
+   $kernel->yield("poll",1);
   }
   $time2 = time;
 
-  trigger_zm();
-  CalculateSpeed();
+  kernel->yield("trigger_zm");
+  kernel->yield("calculate_speed");
 }
 
-sub Poll {
+sub poll {
+ my ($kernel, $heap) = @_[KERNEL, HEAP];
  select((select($PORT), $|=1)[0]);
  my $cmd = 150 + $_[0];
  print $PORT chr(254);
@@ -79,41 +124,8 @@ sub Poll {
  $voltage = ord(getc($PORT));
 }
 
-sub switch_relay {
- select((select($PORT), $|=1)[0]);
- print $PORT chr(254); # Enter Command Mode
- print $PORT chr($_[0]); # Deactivate Previous Relay
- print $PORT chr($bank); # In Bank 1
- select(undef,undef,undef,.1); # Sleep for .1sec
- print $PORT chr(254); # Enter Command Mode
- print $PORT chr($_[1]); # Activate Current Relay
- print $PORT chr($bank); # In Bank 1
-}
-
- 
-sub got_log_line {
- print "$_[ARG0]\n";
-
- if ($_[ARG0] =~ /Green.*alarmed/ && $color eq 'red') # Color is red; green alarms...
- {
-  do_stuff($off_red,$on_green,'green','Green');
- }
- elsif ($_[ARG0] =~ /LG.*alarmed/ && $color eq 'red') # Color is red; left green alarms...
- {
-  do_stuff($off_red,$on_green,'green','Left Green');
- }
- elsif ($_[ARG0] =~ /Amber.*alarmed/ && $color eq 'green') # Color is green; amber alarms...
- {
-  do_stuff($off_green,$on_amber,'amber','Amber');
- }
- elsif ($_[ARG0] =~ /Red.*alarmed/ && $color eq 'amber') # Color is amber; red alarms...
- {
-  do_stuff($off_amber,$on_red,'red','Red');
- }
-}
-
-
-sub CalculateSpeed {
+sub calculate_speed {
+ my ($kernel, $heap) = @_[KERNEL, HEAP];
  my $time = $time2 - $time1;
  my $fps = $distance / $time;
  my $mph = (($fps * 60) * 60) / 5280;
@@ -121,7 +133,7 @@ sub CalculateSpeed {
 
 
 sub trigger_zm {
-
+ my ($kernel, $heap) = @_[KERNEL, HEAP];
 }
 
 sub log {
