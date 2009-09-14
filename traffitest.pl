@@ -76,8 +76,8 @@ sub do_stuff {
  $color = $arg2;
  print "Color is now $color\n";
 
- #$kernel->yield("send_cmd", $off);
- #$kernel->yield("send_cmd", $on);
+ $kernel->yield("send_cmd", $off);
+ $kernel->yield("send_cmd", $on);
  $kernel->yield("detect_traffic");
  #log($_[3]);
 }
