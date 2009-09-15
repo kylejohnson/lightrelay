@@ -56,7 +56,7 @@ sub poll {
  my $cmd = 150 + $_[0];
  print $DEV chr(254);
  print $DEV chr($cmd);
- $voltage = ord(getc($DEV));
+ $heap->{voltage} = ord(getc($DEV));
 }
 
 sub calculate_speed {
