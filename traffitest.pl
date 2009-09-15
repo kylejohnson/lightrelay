@@ -85,13 +85,12 @@ sub do_stuff {
 
 sub detect_traffic {
  my ($kernel, $heap) = @_[KERNEL, HEAP];
- $heap->{voltage} = 255;
 
  if ($heap->{voltage} > $limit) {
   $kernel->yield("send_cmd", 150);
   $kernel->yield("detect_traffic");
+  print "Channel 1 has voltage $heap->{voltage}\n";
   return;
-  print "Voltage is $heap->{voltage}\n";
  }
  $time1 = time;
  $heap->{voltage} = 255;
@@ -99,8 +98,8 @@ sub detect_traffic {
  if ($heap->{voltage} > $limit) {
   $kernel->yield("send_cmd", 151);
   $kernel->yield("detect_traffic");
+  print "Channel 2 has voltage $heap->{voltage}\n";
   return;
-  print "Voltage is $heap->{voltage}\n";
  }
  $time2 = time;
 
@@ -138,6 +137,10 @@ sub send_cmd {
   print $PORT chr($bank);
  } elsif ($arg >= 150 && $arg <= 157) { # Read a channel.  Response.
   print $PORT chr($arg);
-  $heap->{voltage} = ord(getc($PORT));
+  print "Argument is $arg\n";
+  my $response = ord(getc($PORT));
+  print "Response was $response\n";
+  $heap->{voltage} = $response;
+  
  }
 }
