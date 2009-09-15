@@ -16,6 +16,8 @@ my $voltage = 255;
 system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $dev") == 0 || die($!);
 open(my $DEV, "+<", $dev) || die($!);
 
+detect_traffic();
+
 sub detect_traffic {
  while ($voltage > $limit) {
   poll(0);
