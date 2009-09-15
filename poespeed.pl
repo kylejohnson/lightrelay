@@ -51,9 +51,10 @@ sub detect_traffic {
 }
 
 sub poll {
- my ($kernel, $heap) = @_[KERNEL, HEAP];
+ my ($kernel, $heap, $arg) = @_[KERNEL, HEAP, ARG0];
  select(undef,undef,undef,$polltime);
- my $cmd = 150 + $_[0];
+ my $cmd = 150 + $arg;
+ print 
  print $DEV chr(254);
  print $DEV chr($cmd);
  $heap->{voltage} = ord(getc($DEV));
