@@ -16,21 +16,22 @@ my $voltage = 255;
 system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $dev") == 0 || die($!);
 open(my $DEV, "+<", $dev) || die($!);
 
-while ($voltage > $limit) {
- &Poll(0);
+sub detect_traffic {
+ while ($voltage > $limit) {
+  poll(0);
+ }
+ $time1 = time;
+ $voltage = 255;
+
+ while ($voltage > $limit) {
+  poll(1);
+ }
+ $time2 = time;
+
+ calculate_speed();
 }
-$time1 = time;
-$voltage = 255;
 
-while ($voltage > $limit) {
- &Poll(1);
-}
-$time2 = time;
-
-&CalculateSpeed();
-
-
-sub Poll {
+sub poll {
  select(undef,undef,undef,$polltime);
  my $cmd = 150 + $_[0];
  print $DEV chr(254);
@@ -38,11 +39,13 @@ sub Poll {
  $voltage = ord(getc($DEV));
 }
 
-sub CalculateSpeed {
+sub calculate_speed {
  my $time = $time2 - $time1;
  my $fps = $distance / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  print "$mph mph\n";
+ 
+ detect_traffic();
 }
 
 close($DEV);
