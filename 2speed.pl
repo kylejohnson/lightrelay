@@ -46,7 +46,7 @@ sub calculate_speed {
  my $fps = $distance / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  print "$mph mph\n";
- 
+ $voltage = 255;
  detect_traffic();
 }
 
