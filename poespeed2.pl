@@ -105,24 +105,28 @@ sub poll_a_chan {
 }
 
 sub calculate_speed_1 {
- print int(time), ": Calculating speed...\n";
  my $time = $time2 - $time1;
+ my $date = localtime(time);
 
  my $fps = $distance_1 / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
+
+ print "$date\n";
  print "Lane 1:\t $mph mph\n\n";
 
  $_[KERNEL]->delay(poll_chan_1 => 1);
 }
 
 sub calculate_speed_2 {
- print int(time), ": Calculating speed...\n";
  my $time = $time4 - $time3;
+ my $date = localtime(time);
 
  my $fps = $distance_2 / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
+
+ print "$date\n";
  print "Lane 2:\t $mph mph\n\n";
 
  $_[KERNEL]->delay(poll_chan_3 => 1);
