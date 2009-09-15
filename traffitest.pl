@@ -11,11 +11,12 @@ my $baud = 115200;
 my $color = 'green'; # Set initial color to Green
 my $detect = 'off';
 my $distance = 8.3; # Distance in feet between pucks
-my $filename = "/var/www/zm/events/stop-light/dbgpipe.log"; # The file for this script to monitor
+#my $filename = "/var/www/zm/events/stop-light/dbgpipe.log"; # The file for this script to monitor
+my $filename = "dbgpipe.log";
 my $limit = 45; # Voltage limit while polling for traffic
 my $logfile = "/var/log/lightrelay.log"; # Where to output color changes to
 my $polltime = .032;
-my $port = "/dev/ttyS0";
+my $port = "/dev/ttyUSB0";
 my $sleeptime = .1;
 my ($time1, $time2);
 my $on_green = 108;
@@ -88,12 +89,16 @@ sub detect_traffic {
 
  if ($heap->{voltage} > $limit) {
   $kernel->yield("send_cmd", 150);
+  $kernel->yield("detect_traffic");
+  return;
  }
  $time1 = time;
  $heap->{voltage} = 255;
 
  if ($heap->{voltage} > $limit) {
   $kernel->yield("send_cmd", 151);
+  $kernel->yield("detect_traffic");
+  return;
  }
  $time2 = time;
 
@@ -123,15 +128,17 @@ sub send_cmd {
  my ($kernel, $heap, $arg) = @_[KERNEL, HEAP, ARG0];
  select((select($PORT), $|=1)[0]);
  select(undef,undef,undef,.1);
+ print "Sending chr(254)\n";
  print $PORT chr(254);
  if ($arg >= 100 && $arg <= 115) { # Switch a relay.  No response.
+  print "Sending chr($arg)\n";
   print $PORT chr($arg);
+  print "Sending chr($bank)\n";
   print $PORT chr($bank);
  } elsif ($arg >= 150 && $arg <= 157) { # Read a channel.  Response.
+  print "Sending chr($arg)\n";
   print $PORT chr($arg);
-  print "argument is $arg\n";
   $heap->{voltage} = ord(getc($PORT));
-  #$voltage = ord(getc($PORT));;
-  print "voltage is $heap->{voltage}\n";
+  print "Voltage is $heap->{voltage}\n";
  }
 }
