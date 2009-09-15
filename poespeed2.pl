@@ -6,10 +6,16 @@ use Time::HiRes qw(time);
 use POE;
 
 my $dev = shift;
-my $distance = 8.3; # In feet
+my $distance_1 = 8.3; # In feet
+my $distance_2 = 8.3; # In feet
 my $polltime = .032;
 my ($time1, $time2, $time3, $time4);
 my $limit = 45;
+
+if (!$dev) {
+ print "You must specify the path of the device!\n";
+ exit;
+}
 
 POE::Session->create(
   inline_states => {
@@ -102,7 +108,7 @@ sub calculate_speed_1 {
  print int(time), ": Calculating speed...\n";
  my $time = $time2 - $time1;
 
- my $fps = $distance / $time;
+ my $fps = $distance_1 / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
  print "Lane 1:\t $mph mph\n\n";
@@ -114,7 +120,7 @@ sub calculate_speed_2 {
  print int(time), ": Calculating speed...\n";
  my $time = $time4 - $time3;
 
- my $fps = $distance / $time;
+ my $fps = $distance_2 / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
  print "Lane 2:\t $mph mph\n\n";
