@@ -91,6 +91,7 @@ sub detect_traffic {
   $kernel->yield("send_cmd", 150);
   $kernel->yield("detect_traffic");
   return;
+  print "Voltage is $heap->{voltage}\n";
  }
  $time1 = time;
  $heap->{voltage} = 255;
@@ -99,6 +100,7 @@ sub detect_traffic {
   $kernel->yield("send_cmd", 151);
   $kernel->yield("detect_traffic");
   return;
+  print "Voltage is $heap->{voltage}\n";
  }
  $time2 = time;
 
@@ -107,11 +109,12 @@ sub detect_traffic {
 }
 
 sub calculate_speed {
+ print "Calculating speed...";
  my ($kernel, $heap) = @_[KERNEL, HEAP];
  my $time = $time2 - $time1;
  my $fps = $distance / $time;
  my $mph = (($fps * 60) * 60) / 5280;
- print "$mph mph\n";
+ print "Speed is $mph mph\n";
 }
 
 sub trigger_zm {
