@@ -48,6 +48,7 @@ sub calculate_speed {
  $mph = sprintf("%.2f", $mph);
  print "$mph mph\n\n";
  $voltage = 255;
+ sleep(1);
  detect_traffic();
 }
 
