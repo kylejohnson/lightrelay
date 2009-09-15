@@ -16,7 +16,7 @@ my $filename = "dbgpipe.log";
 my $limit = 45; # Voltage limit while polling for traffic
 my $logfile = "/var/log/lightrelay.log"; # Where to output color changes to
 my $polltime = .032;
-my $port = "/dev/ttyUSB0";
+my $port = "/dev/ttyS0";
 my $sleeptime = .1;
 my ($time1, $time2);
 my $on_green = 108;
@@ -111,6 +111,7 @@ sub calculate_speed {
  my $time = $time2 - $time1;
  my $fps = $distance / $time;
  my $mph = (($fps * 60) * 60) / 5280;
+ print "$mph mph\n";
 }
 
 sub trigger_zm {
@@ -128,17 +129,12 @@ sub send_cmd {
  my ($kernel, $heap, $arg) = @_[KERNEL, HEAP, ARG0];
  select((select($PORT), $|=1)[0]);
  select(undef,undef,undef,.1);
- print "Sending chr(254)\n";
  print $PORT chr(254);
  if ($arg >= 100 && $arg <= 115) { # Switch a relay.  No response.
-  print "Sending chr($arg)\n";
   print $PORT chr($arg);
-  print "Sending chr($bank)\n";
   print $PORT chr($bank);
  } elsif ($arg >= 150 && $arg <= 157) { # Read a channel.  Response.
-  print "Sending chr($arg)\n";
   print $PORT chr($arg);
   $heap->{voltage} = ord(getc($PORT));
-  print "Voltage is $heap->{voltage}\n";
  }
 }
