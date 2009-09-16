@@ -103,26 +103,22 @@ sub do_stuff {
 
 # $kernel->yield("switch_relay", $off);
 # $kernel->yield("switch_relay", $on);
-# $_[KERNEL]->yield(
-#  poll_a_chan => {
-#   chan		=> $off,
-#  }
-# );
  $_[KERNEL]->yield(
+  poll_a_chan => {
+   chan		=> $off,
+  }
+ );
+ $_[KERNEL]->delay(yield(
   poll_a_chan => {
    chan		=> $on,
   }
+ )
  );
 }
 
-sub switch_relay {
- print $DEV chr(254);
- print $DEV chr($_[ARG0]);
- print $DEV chr(1);
- select(undef,undef,undef,.1);
- print $DEV chr(254);
- print $DEV chr($_[ARG1]);
- print $DEV chr(1);
+sub switch_relays {
+ my $off = $_[ARG0];
+ my $on = $_[ARG1];
 }
 
 sub poll_chan_1 {
