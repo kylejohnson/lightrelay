@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Time::HiRes qw(time);
 use POE;
+use IO::Socket;
 
 my $dev = shift;
 my $distance_1 = 8.3; # In feet
@@ -27,17 +28,31 @@ POE::Session->create(
     calculate_speed_1 => \&calculate_speed_1,
     calculate_speed_2 => \&calculate_speed_2,
     poll_a_chan     => \&poll_a_chan,
+    trigger_zm	=> \&trigger_zm,
   },
 );
 
-open(my $DEV, "+<", $dev);
+open(my $DEV, "+<", $dev) || die("Failed opening $dev: $!\n");
+my $sock = new IO::Socket::INET (
+ PeerAddr => 'localhost',
+ PeerPort => '6802',
+ Proto => 'tcp',
+);
+die("Failed opening ZM Socket: $!\n") unless ($sock);
 POE::Kernel->run();
 close($DEV);
+close ($sock);
 exit;
 
 sub server_start {
  $_[KERNEL]->yield("poll_chan_1");
  $_[KERNEL]->yield("poll_chan_3");
+}
+
+sub trigger_zm {
+ my $mph = $_[ARG0] . "mph -";
+ my $lane = $_[ARG1];
+ print $sock "5|on+6|1|Speed||$mph $lane";
 }
 
 sub poll_chan_1 {
@@ -114,6 +129,7 @@ sub calculate_speed_1 {
 
  print "$date\n";
  print "Lane 1:\t $mph mph\n\n";
+ $_[KERNEL]->yield("trigger_zm", $mph, "Lane 1");
 
  $_[KERNEL]->delay(poll_chan_1 => 1);
 }
@@ -128,6 +144,7 @@ sub calculate_speed_2 {
 
  print "$date\n";
  print "Lane 2:\t $mph mph\n\n";
+ $_[KERNEL]->yield("trigger_zm", $mph, "Lane 2");
 
  $_[KERNEL]->delay(poll_chan_3 => 1);
 }
