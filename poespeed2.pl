@@ -3,15 +3,23 @@
 use strict;
 use warnings;
 use Time::HiRes qw(time);
-use POE;
+use POE qw(Wheel::FollowTail);
 use IO::Socket;
 
+my $color = 'green';
 my $dev = shift;
 my $distance_1 = 8.3; # In feet
 my $distance_2 = 8.3; # In feet
 my $polltime = .032;
 my ($time1, $time2, $time3, $time4);
 my $limit = 45;
+my $logfile = "dbgpipe.log";
+my $on_green = 108;
+my $off_green = 100;
+my $on_amber = 109;
+my $off_amber = 101;
+my $on_red = 110;
+my $off_red = 102;
 
 if (!$dev) {
  print "You must specify the path of the device!\n";
@@ -21,13 +29,17 @@ if (!$dev) {
 POE::Session->create(
   inline_states => {
     _start          => \&server_start,
+    do_stuff	    => \&do_stuff,
+    got_log_line    => \&got_log_line,
     poll_chan_1     => \&poll_chan_1,
     poll_chan_2     => \&poll_chan_2,
     poll_chan_3     => \&poll_chan_3,
     poll_chan_4     => \&poll_chan_4,
     calculate_speed_1 => \&calculate_speed_1,
     calculate_speed_2 => \&calculate_speed_2,
-    poll_a_chan     => \&poll_a_chan,
+    parse_logfile => \&parse_logfile,
+    poll_a_chan     => \&send_cmd,
+    switch_relay => \&send_cmd,
     trigger_zm	=> \&trigger_zm,
   },
 );
@@ -47,12 +59,70 @@ exit;
 sub server_start {
  $_[KERNEL]->yield("poll_chan_1");
  $_[KERNEL]->yield("poll_chan_3");
+ $_[KERNEL]->yield("parse_logfile");
 }
 
 sub trigger_zm {
  my $mph = $_[ARG0] . "mph -";
  my $lane = $_[ARG1];
  print $sock "5|on+6|1|Speed||$mph $lane";
+}
+
+sub parse_logfile {
+ $_[HEAP]->{tailor} = POE::Wheel::FollowTail->new (
+  Filename => "$logfile",
+  InputEvent => "got_log_line",
+ );
+}
+
+sub got_log_line {
+ my ($kernel, $heap, $line) = @_[KERNEL, HEAP, ARG0];
+
+ if ($line =~ /Green.*alarmed/ && $color eq 'red') # Color is red; green alarms...
+ {
+  $kernel->yield("do_stuff", $off_red, $on_green, 'green', 'Green');
+ }
+ elsif ($line =~ /LG.*alarmed/ && $color eq 'red') # Color is red; left green alarms...
+ {
+  $kernel->yield("do_stuff", $off_red, $on_green, 'green', 'Left Green');
+ }
+ elsif ($line =~ /Amber.*alarmed/ && $color eq 'green') # Color is green; amber alarms...
+ {
+  $kernel->yield("do_stuff", $off_green, $on_amber, 'amber', 'Amber');
+ }
+ elsif ($line =~ /Red.*alarmed/ && $color eq 'amber') # Color is amber; red alarms...
+ {
+  $kernel->yield("do_stuff", $off_amber, $on_red, 'red', 'Red');
+ }
+}
+
+sub do_stuff {
+  my ($kernel, $heap, $off, $on, $arg2, $state) = @_[KERNEL, HEAP, ARG0, ARG1, ARG2, ARG3];
+ $color = $arg2;
+ print "Color is now $color\n";
+
+# $kernel->yield("switch_relay", $off);
+# $kernel->yield("switch_relay", $on);
+# $_[KERNEL]->yield(
+#  poll_a_chan => {
+#   chan		=> $off,
+#  }
+# );
+ $_[KERNEL]->yield(
+  poll_a_chan => {
+   chan		=> $on,
+  }
+ );
+}
+
+sub switch_relay {
+ print $DEV chr(254);
+ print $DEV chr($_[ARG0]);
+ print $DEV chr(1);
+ select(undef,undef,undef,.1);
+ print $DEV chr(254);
+ print $DEV chr($_[ARG1]);
+ print $DEV chr(1);
 }
 
 sub poll_chan_1 {
@@ -101,6 +171,32 @@ sub poll_chan_4 {
     },
   );
  $time4 = time;
+}
+
+sub send_cmd {
+ my $arg = $_[ARG0];
+
+ print $DEV chr(254);
+
+ if ($arg->{chan} <= 8) {
+  my $cmd = 149 + $arg->{chan};
+
+  print $DEV chr($cmd);
+  my $voltage = ord(getc($DEV));
+
+  if ($voltage > $arg->{limit}) {
+   $_[KERNEL]->delay($arg->{above_event} => $polltime);
+   return;
+  }
+  $_[KERNEL]->delay($arg->{below_event} => $polltime);
+
+  } else {
+ select(undef,undef,undef,.1);  # Coudl make use of below and above events here
+   my $cmd = $arg->{chan};
+   print "$cmd\n";
+   print $DEV chr($cmd);
+   print $DEV chr(1);
+  }
 }
 
 sub poll_a_chan {
