@@ -39,7 +39,6 @@ POE::Session->create(
     calculate_speed_2 => \&calculate_speed_2,
     parse_logfile => \&parse_logfile,
     poll_a_chan     => \&send_cmd,
-    switch_relay => \&send_cmd,
     trigger_zm	=> \&trigger_zm,
   },
 );
