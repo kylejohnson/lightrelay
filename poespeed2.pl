@@ -101,24 +101,17 @@ sub do_stuff {
  $color = $arg2;
  print "Color is now $color\n";
 
-# $kernel->yield("switch_relay", $off);
-# $kernel->yield("switch_relay", $on);
  $_[KERNEL]->yield(
   poll_a_chan => {
    chan		=> $off,
   }
  );
- $_[KERNEL]->delay(yield(
+
+ $_[KERNEL]->yield(
   poll_a_chan => {
    chan		=> $on,
   }
- )
  );
-}
-
-sub switch_relays {
- my $off = $_[ARG0];
- my $on = $_[ARG1];
 }
 
 sub poll_chan_1 {
@@ -172,11 +165,11 @@ sub poll_chan_4 {
 sub send_cmd {
  my $arg = $_[ARG0];
 
- print $DEV chr(254);
 
  if ($arg->{chan} <= 8) {
   my $cmd = 149 + $arg->{chan};
 
+  print $DEV chr(254);
   print $DEV chr($cmd);
   my $voltage = ord(getc($DEV));
 
@@ -187,9 +180,9 @@ sub send_cmd {
   $_[KERNEL]->delay($arg->{below_event} => $polltime);
 
   } else {
- select(undef,undef,undef,.1);  # Coudl make use of below and above events here
-   my $cmd = $arg->{chan};
-   print "$cmd\n";
+   my $cmd =  $arg->{chan};
+
+   print $DEV chr(254);
    print $DEV chr($cmd);
    print $DEV chr(1);
   }
