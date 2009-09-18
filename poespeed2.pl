@@ -38,7 +38,8 @@ POE::Session->create(
     calculate_speed_1 => \&calculate_speed_1,
     calculate_speed_2 => \&calculate_speed_2,
     parse_logfile => \&parse_logfile,
-    poll_a_chan     => \&send_cmd,
+    poll_a_chan     => \&poll_a_chan,
+    switch_relay => \&switch_relay,
     trigger_zm	=> \&trigger_zm,
   },
 );
@@ -52,19 +53,13 @@ my $sock = new IO::Socket::INET (
 die("Failed opening ZM Socket: $!\n") unless ($sock);
 POE::Kernel->run();
 close($DEV);
-close ($sock);
+close($sock);
 exit;
 
 sub server_start {
  $_[KERNEL]->yield("poll_chan_1");
  $_[KERNEL]->yield("poll_chan_3");
  $_[KERNEL]->yield("parse_logfile");
-}
-
-sub trigger_zm {
- my $mph = $_[ARG0] . "mph -";
- my $lane = $_[ARG1];
- print $sock "5|on+6|1|Speed||$mph $lane";
 }
 
 sub parse_logfile {
@@ -100,17 +95,8 @@ sub do_stuff {
  $color = $arg2;
  print "Color is now $color\n";
 
- $_[KERNEL]->yield(
-  poll_a_chan => {
-   chan		=> $off,
-  }
- );
-
- $_[KERNEL]->yield(
-  poll_a_chan => {
-   chan		=> $on,
-  }
- );
+ $_[KERNEL]->yield("switch_relay" => {chan => $off,});
+ $_[KERNEL]->delay("switch_relay", .3, {chan => $on});
 }
 
 sub poll_chan_1 {
@@ -161,30 +147,13 @@ sub poll_chan_4 {
  $time4 = time;
 }
 
-sub send_cmd {
+sub switch_relay {
  my $arg = $_[ARG0];
 
-
- if ($arg->{chan} <= 8) {
-  my $cmd = 149 + $arg->{chan};
-
-  print $DEV chr(254);
-  print $DEV chr($cmd);
-  my $voltage = ord(getc($DEV));
-
-  if ($voltage > $arg->{limit}) {
-   $_[KERNEL]->delay($arg->{above_event} => $polltime);
-   return;
-  }
-  $_[KERNEL]->delay($arg->{below_event} => $polltime);
-
-  } else {
-   my $cmd =  $arg->{chan};
-
-   print $DEV chr(254);
-   print $DEV chr($cmd);
-   print $DEV chr(1);
-  }
+ my $cmd =  $arg->{chan};
+ print $DEV chr(254);
+ print $DEV chr($cmd);
+ print $DEV chr(1);
 }
 
 sub poll_a_chan {
@@ -203,6 +172,13 @@ sub poll_a_chan {
  $_[KERNEL]->delay($arg->{below_event} => $polltime);
 }
 
+sub trigger_zm {
+ print "Triggering ZM...\n";
+ my $mph = $_[ARG0] . "mph -";
+ my $lane = $_[ARG1];
+ print $sock "5|on+6|1|Speed||$mph $lane";
+}
+
 sub calculate_speed_1 {
  my $time = $time2 - $time1;
  my $date = localtime(time);
@@ -211,11 +187,12 @@ sub calculate_speed_1 {
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
 
- print "$date\n";
- print "Lane 1:\t $mph mph\n\n";
- $_[KERNEL]->yield("trigger_zm", $mph, "Lane 1");
+ print "$date: Lane 1: $mph mph\n";
+ if ($color eq 'amber' || $color eq 'red') {
+  $_[KERNEL]->yield("trigger_zm", $mph, "Lane 1");
+ }
 
- $_[KERNEL]->delay(poll_chan_1 => 1);
+ $_[KERNEL]->delay(poll_chan_1 => $polltime);
 }
 
 sub calculate_speed_2 {
@@ -226,9 +203,9 @@ sub calculate_speed_2 {
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
 
- print "$date\n";
- print "Lane 2:\t $mph mph\n\n";
- $_[KERNEL]->yield("trigger_zm", $mph, "Lane 2");
-
- $_[KERNEL]->delay(poll_chan_3 => 1);
+ print "$date: Lane 2: $mph mph\n";
+ if ($color eq 'amber' || $color eq 'red') {
+  $_[KERNEL]->yield("trigger_zm", $mph, "Lane 2");
+ }
+ $_[KERNEL]->delay(poll_chan_3 => $polltime);
 }
