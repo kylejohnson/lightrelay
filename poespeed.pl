@@ -6,7 +6,8 @@ use Time::HiRes qw(time);
 use POE;
 
 my $dev = shift;
-my $distance = 8.3; # Distance in feet between pucks
+my $distance_1 = 8.3; # Distance in feet between pucks
+my $distance_2 = 8.3; # Distance in feet between pucks
 my $polltime = .032;
 my ($time1, $time2);
 my $limit = 45;
@@ -31,11 +32,12 @@ exit;
 
 sub detect_traffic {
  my ($kernel, $heap) = @_[KERNEL, HEAP];
+ print "$heap->{voltage}\n";
 
  if ($heap->{voltage} > $limit) {
 # if ($voltage > $limit) {
   $kernel->yield("poll", 0);
-  $kernel->yield("detect_traffic");
+#  $kernel->yield("detect_traffic");
   return;
  }
  $time1 = time;
@@ -45,12 +47,13 @@ sub detect_traffic {
  if ($heap->{voltage} > $limit) {
 # if ($voltage > $limit) {
   $kernel->yield("poll", 1);
-  $kernel->yield("detect_traffic");
+#  $kernel->yield("detect_traffic");
   return;
  }
  $time2 = time;
  print "Am I getting here?\n";
  $kernel->yield("calculate_speed");
+ return;
 }
 
 sub poll {
@@ -62,6 +65,7 @@ sub poll {
  $heap->{voltage} = ord(getc($DEV));
  #$voltage = ord(getc($DEV));
  print "$cmd is $heap->{voltage}\n";
+  $kernel->yield("detect_traffic");
 }
 
 sub calculate_speed {
