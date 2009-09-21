@@ -5,12 +5,13 @@ use warnings;
 use Time::HiRes qw(time);
 use POE qw(Wheel::FollowTail);
 use IO::Socket;
+use Term::ANSIColor;
 
 my $color = 'green';
 my $dev = shift;
 my $distance_1 = 8.3; # In feet
-my $distance_2 = 8.3; # In feet
-my $polltime = .032;
+my $distance_2 = 128; # Inch
+my $polltime = .01;
 my ($time1, $time2, $time3, $time4);
 my $limit = 45;
 my $logfile = "dbgpipe.log";
@@ -82,9 +83,9 @@ sub got_log_line {
  }
  elsif ($line =~ /Amber.*alarmed/ && $color eq 'green') # Color is green; amber alarms...
  {
-  $kernel->yield("do_stuff", $off_green, $on_amber, 'amber', 'Amber');
+  $kernel->yield("do_stuff", $off_green, $on_amber, 'yellow', 'Amber');
  }
- elsif ($line =~ /Red.*alarmed/ && $color eq 'amber') # Color is amber; red alarms...
+ elsif ($line =~ /Red.*alarmed/ && $color eq 'yellow') # Color is amber; red alarms...
  {
   $kernel->yield("do_stuff", $off_amber, $on_red, 'red', 'Red');
  }
@@ -93,7 +94,7 @@ sub got_log_line {
 sub do_stuff {
   my ($kernel, $heap, $off, $on, $arg2, $state) = @_[KERNEL, HEAP, ARG0, ARG1, ARG2, ARG3];
  $color = $arg2;
- print "Color is now $color\n";
+ print color("$color"), "Color is now $color\n";
 
  $_[KERNEL]->yield("switch_relay" => {chan => $off,});
  $_[KERNEL]->delay("switch_relay", .3, {chan => $on});
@@ -176,7 +177,7 @@ sub trigger_zm {
  print "Triggering ZM...\n";
  my $mph = $_[ARG0] . "mph -";
  my $lane = $_[ARG1];
- print $sock "5|on+6|1|Speed||$mph $lane";
+ print $sock "5|on+6|1|$lane Violation|$lane - $mph|$mph $lane\n";
 }
 
 sub calculate_speed_1 {
@@ -188,24 +189,23 @@ sub calculate_speed_1 {
  $mph = sprintf("%.2f", $mph);
 
  print "$date: Lane 1: $mph mph\n";
- if ($color eq 'amber' || $color eq 'red') {
+ if ($color eq 'yellow' || $color eq 'red') {
   $_[KERNEL]->yield("trigger_zm", $mph, "Lane 1");
  }
-
- $_[KERNEL]->delay(poll_chan_1 => $polltime);
+ $_[KERNEL]->delay(poll_chan_1 => 1);
 }
 
 sub calculate_speed_2 {
  my $time = $time4 - $time3;
  my $date = localtime(time);
 
- my $fps = $distance_2 / $time;
+ my $fps = ($distance_2 / 12) / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
 
  print "$date: Lane 2: $mph mph\n";
- if ($color eq 'amber' || $color eq 'red') {
+ if ($color eq 'yellow' || $color eq 'red') {
   $_[KERNEL]->yield("trigger_zm", $mph, "Lane 2");
  }
- $_[KERNEL]->delay(poll_chan_3 => $polltime);
+ $_[KERNEL]->delay(poll_chan_3 => 1);
 }
