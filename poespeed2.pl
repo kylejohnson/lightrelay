@@ -10,7 +10,7 @@ use Term::ANSIColor;
 my $color = 'green';
 my $dev = shift;
 my $distance_1 = 8.3; # In feet
-my $distance_2 = 8.3; # In feet
+my $distance_2 = 128; # Inch
 my $polltime = .01;
 my ($time1, $time2, $time3, $time4);
 my $limit = 45;
@@ -199,7 +199,7 @@ sub calculate_speed_2 {
  my $time = $time4 - $time3;
  my $date = localtime(time);
 
- my $fps = $distance_2 / $time;
+ my $fps = ($distance_2 / 12) / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
 
