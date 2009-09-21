@@ -21,6 +21,7 @@ my $on_amber = 109;
 my $off_amber = 101;
 my $on_red = 110;
 my $off_red = 102;
+my $timeout = 2;
 
 if (!$dev) {
  print "You must specify the path of the device!\n";
@@ -119,6 +120,7 @@ sub poll_chan_2 {
       limit       => $limit,
       below_event => "calculate_speed_1",
       above_event => "poll_chan_2",
+      timeout => time,
     },
   );
  $time2 = time;
@@ -143,6 +145,7 @@ sub poll_chan_4 {
       limit       => $limit,
       below_event => "calculate_speed_2",
       above_event => "poll_chan_4",
+      timeout => time,
     },
   );
  $time4 = time;
@@ -165,7 +168,7 @@ sub poll_a_chan {
  print $DEV chr($cmd);
  my $voltage = ord(getc($DEV));
 
- if ($voltage > $arg->{limit}) {
+ if (($voltage > $arg->{limit}) || (($arg->{chan} == 2 || $arg->{chan} == 4) && ((time - $arg->{timer}) >= $timeout))) {
   $_[KERNEL]->delay($arg->{above_event} => $polltime);
   return;
  }
