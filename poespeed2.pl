@@ -59,6 +59,8 @@ close($sock);
 exit;
 
 sub server_start {
+ $_[HEAP]->{current_1} = "poll_chan_1";
+ $_[HEAP]->{current_2} = "poll_chan_3";
  $_[KERNEL]->yield("poll_chan_1");
  $_[KERNEL]->yield("poll_chan_3");
  $_[KERNEL]->yield("parse_logfile");
@@ -102,6 +104,11 @@ sub do_stuff {
 }
 
 sub poll_chan_1 {
+  if ($_[HEAP]->{current_1} ne "poll_chan_1") {
+    $_[HEAP]->{current_1} = "poll_chan_1";
+#    $_[HEAP]->{start_time_1} = time();
+  }
+
   $_[KERNEL]->yield(
     poll_a_chan => {
       chan        => 1,
@@ -114,19 +121,30 @@ sub poll_chan_1 {
 }
 
 sub poll_chan_2 {
-  $_[KERNEL]->yield(
+  if ($_[HEAP]->{current_1} ne "poll_chan_2") {
+    $_[HEAP]->{current_1} = "poll_chan_2";
+    $_[HEAP]->{start_time_1} = time();
+  }
+
+ $_[KERNEL]->yield(
     poll_a_chan => {
       chan        => 2,
       limit       => $limit,
       below_event => "calculate_speed_1",
       above_event => "poll_chan_2",
-      timeout => time,
+      timeout	=> 2,
+      timeout_event => "poll_chan_1",
     },
   );
  $time2 = time;
 }
 
 sub poll_chan_3 {
+  if ($_[HEAP]->{current_2} ne "poll_chan_3") {
+    $_[HEAP]->{current_2} = "poll_chan_3";
+#    $_[HEAP]->{start_time_2} = time();
+  }
+
   $_[KERNEL]->yield(
     poll_a_chan => {
       chan        => 3,
@@ -139,13 +157,19 @@ sub poll_chan_3 {
 }
 
 sub poll_chan_4 {
+  if ($_[HEAP]->{current_2} ne "poll_chan_4") {
+    $_[HEAP]->{current_2} = "poll_chan_4";
+    $_[HEAP]->{start_time_2} = time();
+  }
+
   $_[KERNEL]->yield(
     poll_a_chan => {
       chan        => 4,
       limit       => $limit,
       below_event => "calculate_speed_2",
       above_event => "poll_chan_4",
-      timeout => time,
+      timeout	=> 2,
+      timeout_event => "poll_chan_3",
     },
   );
  $time4 = time;
@@ -162,16 +186,34 @@ sub switch_relay {
 
 sub poll_a_chan {
  my $arg = $_[ARG0];
- my $cmd = 149 + $arg->{chan};
+ my $chan = $arg->{chan};
+ my $cmd = 149 + $chan;
+ my $time = localtime(time);
+
+  if (exists $arg->{timeout}) {
+   if ($chan <= 2) {
+    if (time() - $_[HEAP]->{start_time_1} >= $arg->{timeout}) {
+      print $time, ": Timed out polling chan $arg->{chan}!\n";
+      $_[KERNEL]->yield($arg->{timeout_event});
+      return;
+    }
+   } elsif ($chan >= 3) {
+    if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
+      print $time, ": Timed out polling chan $arg->{chan}!\n";
+      $_[KERNEL]->yield($arg->{timeout_event});
+      return;
+    }
+   }
+  }
 
  print $DEV chr(254);
  print $DEV chr($cmd);
  my $voltage = ord(getc($DEV));
 
- if (($voltage > $arg->{limit}) || (($arg->{chan} == 2 || $arg->{chan} == 4) && ((time - $arg->{timer}) >= $timeout))) {
-  $_[KERNEL]->delay($arg->{above_event} => $polltime);
-  return;
- }
+ if ($voltage > $arg->{limit}) {
+   $_[KERNEL]->delay($arg->{above_event} => $polltime);
+   return;
+  }
 
  $_[KERNEL]->delay($arg->{below_event} => $polltime);
 }
@@ -180,7 +222,8 @@ sub trigger_zm {
  print "Triggering ZM...\n";
  my $mph = $_[ARG0] . "mph -";
  my $lane = $_[ARG1];
- print $sock "5|on+6|1|$lane Violation|$lane - $mph|$mph $lane\n";
+ print $sock "5|off||||";
+ print $sock "5|on+6|1|$lane Violation|$lane - $mph|$mph $lane";
 }
 
 sub calculate_speed_1 {
