@@ -33,6 +33,10 @@ if ($cmd eq "red") {
 
 open(my $DEV, "+<", "/dev/ttyS0") || die ($!);
  print $DEV chr(254);
+ print $DEV chr(129);
+ print $DEV chr(1);
+ select(undef,undef,undef,.5);
+ print $DEV chr(254);
  print $DEV chr($cmd);
  print $DEV chr(1);
 
