@@ -222,8 +222,11 @@ sub trigger_zm {
  print "Triggering ZM...\n";
  my $mph = $_[ARG0] . "mph -";
  my $lane = $_[ARG1];
- print $sock "5|off||||";
- print $sock "5|on+6|1|$lane Violation|$lane - $mph|$mph $lane";
+ if ($lane == 1) {
+  print $sock "7|on+6|1|Lane $lane Violation|Lane $lane - $mph|$mph $lane";
+ } elsif ($lane == 2) {
+  print $sock "5|on+6|1|Lane $lane Violation|Lane $lane - $mph|$mph $lane";
+ }
 }
 
 sub calculate_speed_1 {
@@ -235,8 +238,8 @@ sub calculate_speed_1 {
  $mph = sprintf("%.2f", $mph);
 
  print "$date: Lane 1: $mph mph\n";
- if ($color eq 'yellow' || $color eq 'red') {
-  $_[KERNEL]->yield("trigger_zm", $mph, "Lane 1");
+ if ($color eq 'yellow' || $color eq 'red' && $mph < 150) {
+  $_[KERNEL]->yield("trigger_zm", $mph, 1);
  }
  $_[KERNEL]->delay(poll_chan_1 => 1);
 }
@@ -250,8 +253,8 @@ sub calculate_speed_2 {
  $mph = sprintf("%.2f", $mph);
 
  print "$date: Lane 2: $mph mph\n";
- if ($color eq 'yellow' || $color eq 'red') {
-  $_[KERNEL]->yield("trigger_zm", $mph, "Lane 2");
+ if ($color eq 'yellow' || $color eq 'red' && $mph < 150) {
+  $_[KERNEL]->yield("trigger_zm", $mph, 2);
  }
  $_[KERNEL]->delay(poll_chan_3 => 1);
 }
