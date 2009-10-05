@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-open($FILE, ">>", "dbgpipe.log") || die($!);
+open(my $FILE, ">>", "dbgpipe.log") || die($!);
 select((select($FILE), $| = 1)[0]);
 while () {
  print $FILE "Amber alarmed\n";
