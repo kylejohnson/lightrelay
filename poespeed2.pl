@@ -220,13 +220,13 @@ sub poll_a_chan {
 
 sub trigger_zm {
  print "Triggering ZM...\n";
- my $mph = $_[ARG0] . "mph -";
- my $lane = $_[ARG1];
- if ($lane == 1) {
-  print $sock "7|on+6|1|Lane $lane Violation|Lane $lane - $mph|$mph $lane";
- } elsif ($lane == 2) {
-  print $sock "5|on+6|1|Lane $lane Violation|Lane $lane - $mph|$mph $lane";
- }
+ #my $mph = $_[ARG0] . "mph -";
+ #my $lane = $_[ARG1];
+ #if ($lane == 1) {
+ # print $sock "7|on+6|1|Lane $lane Violation|Lane $lane - $mph|$mph $lane";
+ #} elsif ($lane == 2) {
+ # print $sock "5|on+6|1|Lane $lane Violation|Lane $lane - $mph|$mph $lane";
+ #}
 }
 
 sub calculate_speed_1 {
