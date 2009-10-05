@@ -11,7 +11,7 @@ my $color = 'green';
 my $dev = shift;
 my $distance_1 = 8.3; # In feet
 my $distance_2 = 128; # Inch
-my $polltime = .01;
+my $polltime = .04;
 my ($time1, $time2, $time3, $time4);
 my $limit = 45;
 my $logfile = "dbgpipe.log";
@@ -41,7 +41,6 @@ POE::Session->create(
     calculate_speed_2 => \&calculate_speed_2,
     parse_logfile => \&parse_logfile,
     poll_a_chan     => \&poll_a_chan,
-    switch_relay => \&switch_relay,
     trigger_zm	=> \&trigger_zm,
   },
 );
@@ -95,12 +94,12 @@ sub got_log_line {
 }
 
 sub do_stuff {
-  my ($kernel, $heap, $off, $on, $arg2, $state) = @_[KERNEL, HEAP, ARG0, ARG1, ARG2, ARG3];
+ my ($kernel, $heap, $off, $on, $arg2, $state) = @_[KERNEL, HEAP, ARG0, ARG1, ARG2, ARG3];
  $color = $arg2;
  print color("$color"), "Color is now $color\n";
 
- $_[KERNEL]->yield("switch_relay" => {chan => $off,});
- $_[KERNEL]->delay("switch_relay", .3, {chan => $on});
+ $_[KERNEL]->yield("poll_a_chan" => {chan => $off});
+ $_[KERNEL]->delay("poll_a_chan", .3, {chan => $on});
 }
 
 sub poll_chan_1 {
@@ -175,47 +174,44 @@ sub poll_chan_4 {
  $time4 = time;
 }
 
-sub switch_relay {
- my $arg = $_[ARG0];
-
- my $cmd =  $arg->{chan};
- print $DEV chr(254);
- print $DEV chr($cmd);
- print $DEV chr(1);
-}
-
 sub poll_a_chan {
  my $arg = $_[ARG0];
  my $chan = $arg->{chan};
- my $cmd = 149 + $chan;
  my $time = localtime(time);
 
-  if (exists $arg->{timeout}) {
-   if ($chan <= 2) {
-    if (time() - $_[HEAP]->{start_time_1} >= $arg->{timeout}) {
-      print $time, ": Timed out polling chan $arg->{chan}!\n";
-      $_[KERNEL]->yield($arg->{timeout_event});
-      return;
-    }
-   } elsif ($chan >= 3) {
-    if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
-      print $time, ": Timed out polling chan $arg->{chan}!\n";
-      $_[KERNEL]->yield($arg->{timeout_event});
-      return;
-    }
+ if (exists $arg->{timeout}) {
+  if ($chan <= 2) {
+   if (time() - $_[HEAP]->{start_time_1} >= $arg->{timeout}) {
+    print $time, ": Timed out polling chan $arg->{chan}!\n";
+    $_[KERNEL]->yield($arg->{timeout_event});
+    return;
+   }
+  } elsif ($chan >= 3 && $chan < 10) {
+   if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
+    print $time, ": Timed out polling chan $arg->{chan}!\n";
+    $_[KERNEL]->yield($arg->{timeout_event});
+    return;
    }
   }
+ }
 
  print $DEV chr(254);
- print $DEV chr($cmd);
- my $voltage = ord(getc($DEV));
+ if ($chan >= 100 && $chan < 115) {
+  my $cmd = $chan;
+  print $DEV chr($cmd);
+  print $DEV chr(1);
+ } else {
+  my $cmd = 149 + $chan;
+  print $DEV chr($cmd);
+  my $voltage = ord(getc($DEV));
 
- if ($voltage > $arg->{limit}) {
+  if ($voltage > $arg->{limit}) {
    $_[KERNEL]->delay($arg->{above_event} => $polltime);
    return;
+  } else {
+   $_[KERNEL]->delay($arg->{below_event} => $polltime);
   }
-
- $_[KERNEL]->delay($arg->{below_event} => $polltime);
+ }
 }
 
 sub trigger_zm {
