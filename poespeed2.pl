@@ -25,15 +25,24 @@ my $on_red = 110;
 my $off_red = 102;
 my $timeout = 2;
 
-# This session will handle polling channels.
+# This session will handle polling channels 1 and 2 (lane 1).
 POE::Session->create(
   inline_states => {
     _start          => \&server_start1,
     poll_chan_1     => \&poll_chan_1,
     poll_chan_2     => \&poll_chan_2,
+    calculate_speed_1 => \&calculate_speed_1,
+    poll_a_chan     => \&poll_a_chan,
+    trigger_zm	=> \&trigger_zm,
+  },
+);
+
+# This session will handle polling channels 3 and 4 (lane 2).
+POE::Session->create(
+  inline_states => {
+    _start          => \&server_start3,
     poll_chan_3     => \&poll_chan_3,
     poll_chan_4     => \&poll_chan_4,
-    calculate_speed_1 => \&calculate_speed_1,
     calculate_speed_2 => \&calculate_speed_2,
     poll_a_chan     => \&poll_a_chan,
     trigger_zm	=> \&trigger_zm,
@@ -65,8 +74,11 @@ exit;
 
 sub server_start1 {
  $_[HEAP]->{current_1} = "poll_chan_1";
- $_[HEAP]->{current_2} = "poll_chan_3";
  $_[KERNEL]->yield("poll_chan_1");
+}
+
+sub server_start3 {
+ $_[HEAP]->{current_2} = "poll_chan_3";
  $_[KERNEL]->yield("poll_chan_3");
 }
 
