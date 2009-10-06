@@ -32,7 +32,7 @@ POE::Session->create(
     poll_chan_1     => \&poll_chan_1,
     poll_chan_2     => \&poll_chan_2,
     calculate_speed_1 => \&calculate_speed_1,
-    poll_a_chan     => \&poll_a_chan,
+    poll_lane_1     => \&poll_lane_1,
     trigger_zm	=> \&trigger_zm,
   },
 );
@@ -44,7 +44,7 @@ POE::Session->create(
     poll_chan_3     => \&poll_chan_3,
     poll_chan_4     => \&poll_chan_4,
     calculate_speed_2 => \&calculate_speed_2,
-    poll_a_chan     => \&poll_a_chan,
+    poll_lane_2     => \&poll_lane_2,
     trigger_zm	=> \&trigger_zm,
   },
 );
@@ -130,7 +130,7 @@ sub poll_chan_1 {
   }
 
   $_[KERNEL]->yield(
-    poll_a_chan => {
+    poll_lane_1 => {
       chan        => 1,
       limit       => $limit,
       below_event => "poll_chan_2",
@@ -147,7 +147,7 @@ sub poll_chan_2 {
   }
 
  $_[KERNEL]->yield(
-    poll_a_chan => {
+    poll_lane_1 => {
       chan        => 2,
       limit       => $limit,
       below_event => "calculate_speed_1",
@@ -166,7 +166,7 @@ sub poll_chan_3 {
   }
 
   $_[KERNEL]->yield(
-    poll_a_chan => {
+    poll_lane_2 => {
       chan        => 3,
       limit       => $limit,
       below_event => "poll_chan_4",
@@ -183,7 +183,7 @@ sub poll_chan_4 {
   }
 
   $_[KERNEL]->yield(
-    poll_a_chan => {
+    poll_lane_2 => {
       chan        => 4,
       limit       => $limit,
       below_event => "calculate_speed_2",
@@ -203,25 +203,43 @@ sub switch_relay {
  print $DEV chr(1);
 }
 
-sub poll_a_chan {
+sub poll_lane_1 {
  my $arg = $_[ARG0];
  my $chan = $arg->{chan};
  my $time = localtime(time);
  my $cmd = 149 + $chan;
 
  if (exists $arg->{timeout}) {
-  if ($chan <= 2) {
-    if (time() - $_[HEAP]->{start_time_1} >= $arg->{timeout}) {
-    print $time, ": Timed out polling chan $arg->{chan}!\n";
-    $_[KERNEL]->yield($arg->{timeout_event});
-    return;
-   }
-  } else {
-   if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
-    print $time, ": Timed out polling chan $arg->{chan}!\n";
-    $_[KERNEL]->yield($arg->{timeout_event});
-    return;
-   }
+  if (time() - $_[HEAP]->{start_time_1} >= $arg->{timeout}) {
+   print $time, ": Timed out polling chan $arg->{chan}!\n";
+   $_[KERNEL]->yield($arg->{timeout_event});
+   return;
+  }
+ }
+
+ print $DEV chr(254);
+ print $DEV chr($cmd);
+ my $voltage = ord(getc($DEV));
+
+ if ($voltage > $arg->{limit}) {
+  $_[KERNEL]->delay($arg->{above_event} => $polltime);
+  return;
+ } else {
+  $_[KERNEL]->delay($arg->{below_event} => $polltime);
+ }
+}
+
+sub poll_lane_2 {
+ my $arg = $_[ARG0];
+ my $chan = $arg->{chan};
+ my $time = localtime(time);
+ my $cmd = 149 + $chan;
+
+ if (exists $arg->{timeout}) {
+  if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
+   print $time, ": Timed out polling chan $arg->{chan}!\n";
+   $_[KERNEL]->yield($arg->{timeout_event});
+   return;
   }
  }
 
