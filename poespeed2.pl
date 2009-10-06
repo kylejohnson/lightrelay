@@ -13,7 +13,7 @@ my $creepspeed2 = 5;
 my $dev = "/dev/ttyS0";
 my $distance_1 = 8.3; # In feet
 my $distance_2 = 128; # Inch
-my $polltime = .04;
+my $polltime = .03;
 my ($time1, $time2, $time3, $time4);
 my $limit = 45;
 my $logfile = "dbgpipe.log";
@@ -61,6 +61,7 @@ POE::Session->create(
 );
 
 open(my $DEV, "+<", $dev) || die("Failed opening $dev: $!\n");
+select((select($DEV), $| = 1)[0]);
 my $sock = new IO::Socket::INET (
  PeerAddr => 'localhost',
  PeerPort => '6802',
@@ -196,19 +197,19 @@ sub poll_chan_4 {
 }
 
 sub switch_relay {
- print "Switching relay...\n";
+# print "Switching relay...\n";
  my $arg = $_[ARG0];
  my $cmd = $arg->{cmd};
- print "Sending 254\n";
+# print "Sending 254\n";
  print $DEV chr(254);
- print "Sending $cmd\n";
+# print "Sending $cmd\n";
  print $DEV chr($cmd);
- print "Sending 1\n";
+# print "Sending 1\n";
  print $DEV chr(1);
 }
 
 sub poll_lane_1 {
- print "Polling lane 1...\n";
+# print "Polling lane 1...\n";
  my $arg = $_[ARG0];
  my $chan = $arg->{chan};
  my $time = localtime(time);
@@ -222,13 +223,13 @@ sub poll_lane_1 {
   }
  }
 
- print "Lane 1: Sending 254\n";
+# print "Lane 1: Sending 254\n";
  print $DEV chr(254);
- print "Lane 1: Sending $cmd\n";
+# print "Lane 1: Sending $cmd\n";
  print $DEV chr($cmd);
- print "Lane 1: Getting voltage\n";
+# print "Lane 1: Getting voltage\n";
  my $voltage = ord(getc($DEV));
- print "Lane 1: Voltage is $voltage\n";
+# print "Lane 1: Voltage is $voltage\n";
 
  if ($voltage > $arg->{limit}) {
   $_[KERNEL]->delay($arg->{above_event} => $polltime);
@@ -239,6 +240,7 @@ sub poll_lane_1 {
 }
 
 sub poll_lane_2 {
+# print "Polling lane 2...\n";
  my $arg = $_[ARG0];
  my $chan = $arg->{chan};
  my $time = localtime(time);
@@ -252,13 +254,13 @@ sub poll_lane_2 {
   }
  }
 
- print "Lane 2: Sending 254\n";
+# print "Lane 2: Sending 254\n";
  print $DEV chr(254);
- print "Lane 2: Sending $cmd\n";
+# print "Lane 2: Sending $cmd\n";
  print $DEV chr($cmd);
- print "Lane 2: Getting voltage\n";
+# print "Lane 2: Getting voltage\n";
  my $voltage = ord(getc($DEV));
- print "Lane 2: Voltage is $voltage\n";
+# print "Lane 2: Voltage is $voltage\n";
 
  if ($voltage > $arg->{limit}) {
   $_[KERNEL]->delay($arg->{above_event} => $polltime);
