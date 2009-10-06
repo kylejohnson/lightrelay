@@ -224,13 +224,11 @@ sub trigger_zm {
 
 sub calculate_speed_1 {
  my $time = $time2 - $time1;
- my $date = localtime(time);
 
  my $fps = $distance_1 / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
 
- print "$date: Lane 1: $mph mph\n";
  if ($color eq 'yellow' || $color eq 'red' && $mph < 150) {
   $_[KERNEL]->yield("trigger_zm", $mph, 1);
  }
@@ -239,7 +237,6 @@ sub calculate_speed_1 {
 
 sub calculate_speed_2 {
  my $time = $time4 - $time3;
- my $date = localtime(time);
 
  my $fps = ($distance_2 / 12) / $time;
  my $mph = (($fps * 60) * 60) / 5280;
@@ -250,4 +247,12 @@ sub calculate_speed_2 {
   $_[KERNEL]->yield("trigger_zm", $mph, 2);
  }
  $_[KERNEL]->delay(poll_chan_3 => 1);
+}
+
+sub determine_violation {
+ my $mph = $_[ARG0];
+ my $lane = $_[ARG1];
+ my $date = localtime(time);
+
+ print "$date: Lane $lane: $mph mph\n";
 }
