@@ -8,7 +8,7 @@ use IO::Socket;
 use Term::ANSIColor;
 
 my $color = 'green';
-my $dev = shift;
+my $dev = "/dev/ttyS0";
 my $distance_1 = 8.3; # In feet
 my $distance_2 = 128; # Inch
 my $polltime = .04;
@@ -22,11 +22,6 @@ my $off_amber = 101;
 my $on_red = 110;
 my $off_red = 102;
 my $timeout = 2;
-
-if (!$dev) {
- print "You must specify the path of the device!\n";
- exit;
-}
 
 POE::Session->create(
   inline_states => {
@@ -196,11 +191,11 @@ sub poll_a_chan {
  }
 
  print $DEV chr(254);
- if ($chan >= 100 && $chan < 115) {
+ if ($chan >= 100 && $chan < 115) { # Switch a relay
   my $cmd = $chan;
   print $DEV chr($cmd);
   print $DEV chr(1);
- } else {
+ } else { # Poll a channel
   my $cmd = 149 + $chan;
   print $DEV chr($cmd);
   my $voltage = ord(getc($DEV));
