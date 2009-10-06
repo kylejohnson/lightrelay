@@ -8,7 +8,9 @@ use IO::Socket;
 use Term::ANSIColor;
 
 my $color = 'green';
-my $dev = shift;
+my $creepspeed1 = 5;
+my $creepspeed2 = 5;
+my $dev = "/dev/ttyS0";
 my $distance_1 = 8.3; # In feet
 my $distance_2 = 128; # Inch
 my $polltime = .04;
@@ -22,11 +24,6 @@ my $off_amber = 101;
 my $on_red = 110;
 my $off_red = 102;
 my $timeout = 2;
-
-if (!$dev) {
- print "You must specify the path of the device!\n";
- exit;
-}
 
 POE::Session->create(
   inline_states => {
@@ -179,29 +176,29 @@ sub poll_a_chan {
  my $chan = $arg->{chan};
  my $time = localtime(time);
 
- if (exists $arg->{timeout}) {
-  if ($chan <= 2) {
-   if (time() - $_[HEAP]->{start_time_1} >= $arg->{timeout}) {
-    print $time, ": Timed out polling chan $arg->{chan}!\n";
-    $_[KERNEL]->yield($arg->{timeout_event});
-    return;
-   }
-  } elsif ($chan >= 3 && $chan < 10) {
-   if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
-    print $time, ": Timed out polling chan $arg->{chan}!\n";
-    $_[KERNEL]->yield($arg->{timeout_event});
-    return;
-   }
-  }
- }
-
- print $DEV chr(254);
- if ($chan >= 100 && $chan < 115) {
+ if ($chan >= 100 && $chan < 115) { # Switch a relay
   my $cmd = $chan;
+  print $DEV chr(254);
   print $DEV chr($cmd);
   print $DEV chr(1);
- } else {
+ } else { # Poll a channel
   my $cmd = 149 + $chan;
+  if (exists $arg->{timeout}) {
+   if ($chan <= 2) {
+    if (time() - $_[HEAP]->{start_time_1} >= $arg->{timeout}) {
+     print $time, ": Timed out polling chan $arg->{chan}!\n";
+     $_[KERNEL]->yield($arg->{timeout_event});
+     return;
+    }
+   } elsif ($chan >= 3 && $chan < 10) {
+    if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
+     print $time, ": Timed out polling chan $arg->{chan}!\n";
+     $_[KERNEL]->yield($arg->{timeout_event});
+     return;
+    }
+   }
+  }
+  print $DEV chr(254);
   print $DEV chr($cmd);
   my $voltage = ord(getc($DEV));
 
@@ -227,13 +224,11 @@ sub trigger_zm {
 
 sub calculate_speed_1 {
  my $time = $time2 - $time1;
- my $date = localtime(time);
 
  my $fps = $distance_1 / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
 
- print "$date: Lane 1: $mph mph\n";
  if ($color eq 'yellow' || $color eq 'red' && $mph < 150) {
   $_[KERNEL]->yield("trigger_zm", $mph, 1);
  }
@@ -242,7 +237,6 @@ sub calculate_speed_1 {
 
 sub calculate_speed_2 {
  my $time = $time4 - $time3;
- my $date = localtime(time);
 
  my $fps = ($distance_2 / 12) / $time;
  my $mph = (($fps * 60) * 60) / 5280;
@@ -253,4 +247,12 @@ sub calculate_speed_2 {
   $_[KERNEL]->yield("trigger_zm", $mph, 2);
  }
  $_[KERNEL]->delay(poll_chan_3 => 1);
+}
+
+sub determine_violation {
+ my $mph = $_[ARG0];
+ my $lane = $_[ARG1];
+ my $date = localtime(time);
+
+ print "$date: Lane $lane: $mph mph\n";
 }
