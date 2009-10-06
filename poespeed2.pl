@@ -25,21 +25,30 @@ my $on_red = 110;
 my $off_red = 102;
 my $timeout = 2;
 
+# This session will handle polling channels.
 POE::Session->create(
   inline_states => {
-    _start          => \&server_start,
-    do_stuff	    => \&do_stuff,
-    got_log_line    => \&got_log_line,
+    _start          => \&server_start1,
     poll_chan_1     => \&poll_chan_1,
     poll_chan_2     => \&poll_chan_2,
     poll_chan_3     => \&poll_chan_3,
     poll_chan_4     => \&poll_chan_4,
     calculate_speed_1 => \&calculate_speed_1,
     calculate_speed_2 => \&calculate_speed_2,
-    parse_logfile => \&parse_logfile,
     poll_a_chan     => \&poll_a_chan,
     trigger_zm	=> \&trigger_zm,
   },
+);
+
+# This session will handle parsing log and switching relays.
+POE::Session->create(
+ inline_states => {
+  _start	=> \&server_start2,
+  do_stuff	    => \&do_stuff,
+  parse_logfile	=> \&parse_logfile,
+  got_log_line    => \&got_log_line,
+  switch_relay	=> \&switch_relay,
+ }
 );
 
 open(my $DEV, "+<", $dev) || die("Failed opening $dev: $!\n");
@@ -54,11 +63,14 @@ close($DEV);
 close($sock);
 exit;
 
-sub server_start {
+sub server_start1 {
  $_[HEAP]->{current_1} = "poll_chan_1";
  $_[HEAP]->{current_2} = "poll_chan_3";
  $_[KERNEL]->yield("poll_chan_1");
  $_[KERNEL]->yield("poll_chan_3");
+}
+
+sub server_start2 {
  $_[KERNEL]->yield("parse_logfile");
 }
 
@@ -95,8 +107,8 @@ sub do_stuff {
  $color = $arg2;
  print color("$color"), "Color is now $color\n";
 
- $_[KERNEL]->yield("poll_a_chan" => {chan => $off});
- $_[KERNEL]->delay("poll_a_chan", .3, {chan => $on});
+ $_[KERNEL]->yield("switch_relay" => {cmd => $off});
+ $_[KERNEL]->delay("switch_relay", .3, {cmd => $on});
 }
 
 sub poll_chan_1 {
@@ -171,43 +183,45 @@ sub poll_chan_4 {
  $time4 = time;
 }
 
+sub switch_relay {
+ my $arg = $_[ARG0];
+ my $cmd = $arg->{cmd};
+ print $DEV chr(254);
+ print $DEV chr($cmd);
+ print $DEV chr(1);
+}
+
 sub poll_a_chan {
  my $arg = $_[ARG0];
  my $chan = $arg->{chan};
  my $time = localtime(time);
+ my $cmd = 149 + $chan;
 
- if ($chan >= 100 && $chan < 115) { # Switch a relay
-  my $cmd = $chan;
-  print $DEV chr(254);
-  print $DEV chr($cmd);
-  print $DEV chr(1);
- } else { # Poll a channel
-  my $cmd = 149 + $chan;
-  if (exists $arg->{timeout}) {
-   if ($chan <= 2) {
+ if (exists $arg->{timeout}) {
+  if ($chan <= 2) {
     if (time() - $_[HEAP]->{start_time_1} >= $arg->{timeout}) {
-     print $time, ": Timed out polling chan $arg->{chan}!\n";
-     $_[KERNEL]->yield($arg->{timeout_event});
-     return;
-    }
-   } elsif ($chan >= 3 && $chan < 10) {
-    if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
-     print $time, ": Timed out polling chan $arg->{chan}!\n";
-     $_[KERNEL]->yield($arg->{timeout_event});
-     return;
-    }
+    print $time, ": Timed out polling chan $arg->{chan}!\n";
+    $_[KERNEL]->yield($arg->{timeout_event});
+    return;
+   }
+  } else {
+   if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
+    print $time, ": Timed out polling chan $arg->{chan}!\n";
+    $_[KERNEL]->yield($arg->{timeout_event});
+    return;
    }
   }
-  print $DEV chr(254);
-  print $DEV chr($cmd);
-  my $voltage = ord(getc($DEV));
+ }
 
-  if ($voltage > $arg->{limit}) {
-   $_[KERNEL]->delay($arg->{above_event} => $polltime);
-   return;
-  } else {
-   $_[KERNEL]->delay($arg->{below_event} => $polltime);
-  }
+ print $DEV chr(254);
+ print $DEV chr($cmd);
+ my $voltage = ord(getc($DEV));
+
+ if ($voltage > $arg->{limit}) {
+  $_[KERNEL]->delay($arg->{above_event} => $polltime);
+  return;
+ } else {
+  $_[KERNEL]->delay($arg->{below_event} => $polltime);
  }
 }
 
@@ -224,10 +238,13 @@ sub trigger_zm {
 
 sub calculate_speed_1 {
  my $time = $time2 - $time1;
-
+ my $lane = 1;
  my $fps = $distance_1 / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
+ my $date = localtime(time);
+
+ print "$date: Lane $lane: $mph mph\n";
 
  if ($color eq 'yellow' || $color eq 'red' && $mph < 150) {
   $_[KERNEL]->yield("trigger_zm", $mph, 1);
@@ -237,12 +254,14 @@ sub calculate_speed_1 {
 
 sub calculate_speed_2 {
  my $time = $time4 - $time3;
-
+ my $lane = 2;
  my $fps = ($distance_2 / 12) / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
+ my $date = localtime(time);
 
- print "$date: Lane 2: $mph mph\n";
+ print "$date: Lane $lane: $mph mph\n";
+
  if ($color eq 'yellow' || $color eq 'red' && $mph < 150) {
   $_[KERNEL]->yield("trigger_zm", $mph, 2);
  }
@@ -255,4 +274,9 @@ sub determine_violation {
  my $date = localtime(time);
 
  print "$date: Lane $lane: $mph mph\n";
+
+ if ($color eq 'yellow' || $color eq 'red' && $mph < 150) {
+  $_[KERNEL]->yield("trigger_zm", $mph, 2);
+ }
+ $_[KERNEL]->delay(poll_chan_3 => 1);
 }
