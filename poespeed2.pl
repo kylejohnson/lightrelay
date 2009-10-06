@@ -8,6 +8,8 @@ use IO::Socket;
 use Term::ANSIColor;
 
 my $color = 'green';
+my $creepspeed1 = 5;
+my $creepspeed2 = 5;
 my $dev = "/dev/ttyS0";
 my $distance_1 = 8.3; # In feet
 my $distance_2 = 128; # Inch
@@ -174,29 +176,29 @@ sub poll_a_chan {
  my $chan = $arg->{chan};
  my $time = localtime(time);
 
- if (exists $arg->{timeout}) {
-  if ($chan <= 2) {
-   if (time() - $_[HEAP]->{start_time_1} >= $arg->{timeout}) {
-    print $time, ": Timed out polling chan $arg->{chan}!\n";
-    $_[KERNEL]->yield($arg->{timeout_event});
-    return;
-   }
-  } elsif ($chan >= 3 && $chan < 10) {
-   if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
-    print $time, ": Timed out polling chan $arg->{chan}!\n";
-    $_[KERNEL]->yield($arg->{timeout_event});
-    return;
-   }
-  }
- }
-
- print $DEV chr(254);
  if ($chan >= 100 && $chan < 115) { # Switch a relay
   my $cmd = $chan;
+  print $DEV chr(254);
   print $DEV chr($cmd);
   print $DEV chr(1);
  } else { # Poll a channel
   my $cmd = 149 + $chan;
+  if (exists $arg->{timeout}) {
+   if ($chan <= 2) {
+    if (time() - $_[HEAP]->{start_time_1} >= $arg->{timeout}) {
+     print $time, ": Timed out polling chan $arg->{chan}!\n";
+     $_[KERNEL]->yield($arg->{timeout_event});
+     return;
+    }
+   } elsif ($chan >= 3 && $chan < 10) {
+    if (time() - $_[HEAP]->{start_time_2} >= $arg->{timeout}) {
+     print $time, ": Timed out polling chan $arg->{chan}!\n";
+     $_[KERNEL]->yield($arg->{timeout_event});
+     return;
+    }
+   }
+  }
+  print $DEV chr(254);
   print $DEV chr($cmd);
   my $voltage = ord(getc($DEV));
 
