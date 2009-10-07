@@ -11,7 +11,8 @@ my $color = 'green';
 my $creepspeed1 = 5;
 my $creepspeed2 = 5;
 my $dev = "/dev/ttyS0";
-my $distance = 128; # Inch
+my $distance_1 = 8.3; # In feet
+my $distance_2 = 128; # Inch
 my $polltime = .03;
 my ($time1, $time2, $time3, $time4);
 my $limit = 45;
@@ -30,7 +31,7 @@ POE::Session->create(
     _start          => \&start_lane_1,
     poll_chan_1     => \&poll_chan_1,
     poll_chan_2     => \&poll_chan_2,
-    calculate_speed => \&calculate_speed,
+    calculate_speed_1 => \&calculate_speed_1,
     poll_lane_1     => \&poll_lane_1,
     trigger_zm	=> \&trigger_zm,
   },
@@ -42,7 +43,7 @@ POE::Session->create(
     _start          => \&start_lane_2,
     poll_chan_3     => \&poll_chan_3,
     poll_chan_4     => \&poll_chan_4,
-    calculate_speed => \&calculate_speed,
+    calculate_speed_2 => \&calculate_speed_2,
     poll_lane_2     => \&poll_lane_2,
     trigger_zm	=> \&trigger_zm,
   },
@@ -150,7 +151,7 @@ sub poll_chan_2 {
     poll_lane_1 => {
       chan        => 2,
       limit       => $limit,
-      below_event => "calculate_speed",
+      below_event => "calculate_speed_1",
       above_event => "poll_chan_2",
       timeout	=> 2,
       timeout_event => "poll_chan_1",
@@ -186,7 +187,7 @@ sub poll_chan_4 {
     poll_lane_2 => {
       chan        => 4,
       limit       => $limit,
-      below_event => "calculate_speed",
+      below_event => "calculate_speed_2",
       above_event => "poll_chan_4",
       timeout	=> 2,
       timeout_event => "poll_chan_3",
@@ -266,31 +267,34 @@ sub trigger_zm {
  #}
 }
 
-sub calculate_speed {
- my $arg = $_[ARG0];
- my $chan = $arg->{chan};
- my $date = localtime(time);
- my $lane;
- my $time;
- if ($chan <= 2) {
-  $lane = 1;
-  $time = $time2 - $time1;
- } else {
-  $lane = 2;
-  $time = $time4 - $time3;
- }
- my $fps = $distance / $time;
+sub calculate_speed_1 {
+ my $time = $time2 - $time1;
+ my $lane = 1;
+ my $fps = $distance_1 / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
+ my $date = localtime(time);
 
  print "$date: Lane $lane: $mph mph\n";
 
  if ($color ne 'green') {
-  $_[KERNEL]->yield("trigger_zm", $mph, $lane);
+  $_[KERNEL]->yield("trigger_zm", $mph, 1);
  }
- if ($chan <= 2) {
-  $_[KERNEL]->delay(poll_chan_1 => 1);
- } else {
-  $_[KERNEL]->delay(poll_chan_3 => 1);
+ $_[KERNEL]->delay(poll_chan_1 => 1);
+}
+
+sub calculate_speed_2 {
+ my $time = $time4 - $time3;
+ my $lane = 2;
+ my $fps = ($distance_2 / 12) / $time;
+ my $mph = (($fps * 60) * 60) / 5280;
+ $mph = sprintf("%.2f", $mph);
+ my $date = localtime(time);
+
+ print "$date: Lane $lane: $mph mph\n";
+
+ if ($color ne 'green') {
+  $_[KERNEL]->yield("trigger_zm", $mph, 2);
  }
+ $_[KERNEL]->delay(poll_chan_3 => 1);
 }
