@@ -11,8 +11,8 @@ my $color = 'green';
 my $creepspeed1 = 5;
 my $creepspeed2 = 5;
 my $dev = "/dev/ttyS0";
-my $distance_1 = 8.3; # In feet
-my $distance_2 = 128; # Inch
+my $distance_1 = 90; # In feet
+my $distance_2 = 90; # Inch
 my $polltime = .03;
 my ($time1, $time2, $time3, $time4);
 my $limit = 45;
@@ -270,7 +270,7 @@ sub trigger_zm {
 sub calculate_speed_1 {
  my $time = $time2 - $time1;
  my $lane = 1;
- my $fps = $distance_1 / $time;
+ my $fps = ($distance_1 / 12 ) / $time;
  my $mph = (($fps * 60) * 60) / 5280;
  $mph = sprintf("%.2f", $mph);
  my $date = localtime(time);
