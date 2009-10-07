@@ -197,19 +197,14 @@ sub poll_chan_4 {
 }
 
 sub switch_relay {
-# print "Switching relay...\n";
  my $arg = $_[ARG0];
  my $cmd = $arg->{cmd};
-# print "Sending 254\n";
  print $DEV chr(254);
-# print "Sending $cmd\n";
  print $DEV chr($cmd);
-# print "Sending 1\n";
  print $DEV chr(1);
 }
 
 sub poll_lane_1 {
-# print "Polling lane 1...\n";
  my $arg = $_[ARG0];
  my $chan = $arg->{chan};
  my $time = localtime(time);
@@ -223,13 +218,9 @@ sub poll_lane_1 {
   }
  }
 
-# print "Lane 1: Sending 254\n";
  print $DEV chr(254);
-# print "Lane 1: Sending $cmd\n";
  print $DEV chr($cmd);
-# print "Lane 1: Getting voltage\n";
  my $voltage = ord(getc($DEV));
-# print "Lane 1: Voltage is $voltage\n";
 
  if ($voltage > $arg->{limit}) {
   $_[KERNEL]->delay($arg->{above_event} => $polltime);
@@ -240,7 +231,6 @@ sub poll_lane_1 {
 }
 
 sub poll_lane_2 {
-# print "Polling lane 2...\n";
  my $arg = $_[ARG0];
  my $chan = $arg->{chan};
  my $time = localtime(time);
@@ -254,13 +244,9 @@ sub poll_lane_2 {
   }
  }
 
-# print "Lane 2: Sending 254\n";
  print $DEV chr(254);
-# print "Lane 2: Sending $cmd\n";
  print $DEV chr($cmd);
-# print "Lane 2: Getting voltage\n";
  my $voltage = ord(getc($DEV));
-# print "Lane 2: Voltage is $voltage\n";
 
  if ($voltage > $arg->{limit}) {
   $_[KERNEL]->delay($arg->{above_event} => $polltime);
