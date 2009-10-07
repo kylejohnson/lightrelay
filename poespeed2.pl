@@ -278,7 +278,6 @@ sub calculate_speed_1 {
  print "$date: Lane $lane: $mph mph\n";
 
  if ($color ne 'green') {
-  print "Lane 1:  Triggering ZM.\n";
   $_[KERNEL]->yield("trigger_zm", $mph, 1);
  }
  $_[KERNEL]->delay(poll_chan_1 => 1);
@@ -295,7 +294,6 @@ sub calculate_speed_2 {
  print "$date: Lane $lane: $mph mph\n";
 
  if ($color ne 'green') {
-  print "Lane 2:  Triggering ZM.\n";
   $_[KERNEL]->yield("trigger_zm", $mph, 2);
  }
  $_[KERNEL]->delay(poll_chan_3 => 1);
