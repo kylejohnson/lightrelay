@@ -28,7 +28,7 @@ my $timeout = 2;
 # This session will handle polling channels 1 and 2 (lane 1).
 POE::Session->create(
   inline_states => {
-    _start          => \&server_start1,
+    _start          => \&start_lane_1,
     poll_chan_1     => \&poll_chan_1,
     poll_chan_2     => \&poll_chan_2,
     calculate_speed_1 => \&calculate_speed_1,
@@ -40,7 +40,7 @@ POE::Session->create(
 # This session will handle polling channels 3 and 4 (lane 2).
 POE::Session->create(
   inline_states => {
-    _start          => \&server_start3,
+    _start          => \&start_lane_2,
     poll_chan_3     => \&poll_chan_3,
     poll_chan_4     => \&poll_chan_4,
     calculate_speed_2 => \&calculate_speed_2,
@@ -52,7 +52,7 @@ POE::Session->create(
 # This session will handle parsing log and switching relays.
 POE::Session->create(
  inline_states => {
-  _start	=> \&server_start2,
+  _start	=> \&start_switching,
   do_stuff	    => \&do_stuff,
   parse_logfile	=> \&parse_logfile,
   got_log_line    => \&got_log_line,
@@ -73,17 +73,17 @@ close($DEV);
 close($sock);
 exit;
 
-sub server_start1 {
+sub start_lane_1 {
  $_[HEAP]->{current_1} = "poll_chan_1";
  $_[KERNEL]->yield("poll_chan_1");
 }
 
-sub server_start3 {
+sub start_lane_2 {
  $_[HEAP]->{current_2} = "poll_chan_3";
  $_[KERNEL]->yield("poll_chan_3");
 }
 
-sub server_start2 {
+sub start_switching {
  $_[KERNEL]->yield("parse_logfile");
 }
 
@@ -277,7 +277,8 @@ sub calculate_speed_1 {
 
  print "$date: Lane $lane: $mph mph\n";
 
- if ($color eq 'yellow' || $color eq 'red' && $mph < 150) {
+ if ($color ne 'green') {
+  print "Lane 1:  Triggering ZM.\n";
   $_[KERNEL]->yield("trigger_zm", $mph, 1);
  }
  $_[KERNEL]->delay(poll_chan_1 => 1);
@@ -293,7 +294,8 @@ sub calculate_speed_2 {
 
  print "$date: Lane $lane: $mph mph\n";
 
- if ($color eq 'yellow' || $color eq 'red' && $mph < 150) {
+ if ($color ne 'green') {
+  print "Lane 2:  Triggering ZM.\n";
   $_[KERNEL]->yield("trigger_zm", $mph, 2);
  }
  $_[KERNEL]->delay(poll_chan_3 => 1);
