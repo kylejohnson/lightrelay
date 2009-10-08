@@ -7,14 +7,14 @@ use DBI;
 use DBD::mysql;
 
 #### Config Options ####
-my $port = "/dev/ttyUSB0";
-my $bank = 0; # Bank number which relays on device belong to
-our $color = 'green'; # Set initial color to Green
+my $port = "/dev/ttyS0";
+my $bank = 1; # Bank number which relays on device belong to
+my $color = 'green'; # Set initial color to Green
 my $logfile = "/var/log/lightrelay.log"; # Where to output color changes to
 my $filename = "dbgpipe.log"; # The file for this script to monitor
-my $baud = 38400;
+my $baud = 115200;
 my $command = shift;
-our ($green, $amber, $red, $lgreen) = time();
+my ($green, $amber, $red, $lgreen) = time();
 my $on_green = 108;
 my $off_green = 100;
 my $on_amber = 109;
@@ -22,7 +22,7 @@ my $off_amber = 101;
 my $on_red = 110;
 my $off_red = 102;
 my $pid = "/tmp/lightrelay.pid";
-our $PORT;
+my $PORT;
 # Database Options #
 my $host = 'localhost';
 my $database = 'lightrelay';
@@ -68,58 +68,59 @@ if ($command eq 'start') {
  system("/bin/echo $$ > $pid") == 0 || warn("Can't create PID file $pid: $!\n");
  system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $port") == 0 || die "$!\n";
  open($PORT, "+<", "$port") || die("Can't open $port: $!\n");
+ select((select($PORT), $|=1)[0]);
 
 POE::Session->create(
  inline_states => {
-  _start => sub {
-   $_[HEAP]{tailor} = POE::Wheel::FollowTail->new(
-    Filename => "$filename",
-    InputEvent => "got_log_line",
-    ResetEvent => "got_log_rollover",
-   );
-  },
-  got_log_line => sub {
-   if ($_[ARG0] =~ /Green.*alarmed/ && $color eq 'red') # Color is red; green alarms...
-    {
-     &turned_color($off_red,$on_green,'green','Green');
-    }
-   elsif ($_[ARG0] =~ /LG.*alarmed/ && $color eq 'red') # Color is red; left green alarms...
-    {
-     &turned_color($off_red,$on_green,'green','Left Green');
-    }
-   elsif ($_[ARG0] =~ /Amber.*alarmed/ && $color eq 'green') # Color is green; amber alarms...
-    {
-     &turned_color($off_green,$on_amber,'amber','Amber');
-    }
-   elsif ($_[ARG0] =~ /Red.*alarmed/ && $color eq 'amber') # Color is amber; red alarms...
-    {
-     &turned_color($off_amber,$on_red,'red','Red');
-    }
-  },
-  got_log_rollover => sub {
-   print "Log rolled over.\n";
-  },
+  _start	=> \&server_start,
+  parse_logfile	=> \&parse_logfile,
+  got_log_line	=> \&got_log_line,
+  turned_color	=> \&turned_color,
+  send_signals	=> \&send_signals,
  }
 );
- POE::Kernel->run();
+
+sub server_start {
+ $_[KERNEL]->yield("parse_logfile");
+}
+
+sub parse_logfile {
+ $_[HEAP]{tailor} = POE::Wheel::FollowTail->new(
+  Filename => "$filename",
+  InputEvent => "got_log_line",
+ );
+}
+
+sub got_log_line {
+ my ($kernel, $heap, $line) = @_[KERNEL, HEAP, ARG0];
+
+ if ($line =~ /Green.*alarmed/ && $color eq 'red') { # Red -> Green
+  $kernel->yield("turned_color", $off_red, $on_green, 'green',' Green');
+ } elsif ($line =~ /LG.*alarmed/ && $color eq 'red') { # Red -> Left / Green
+  $kernel->yield("turned_color", $off_red, $on_green, 'green', 'Left Green');
+ } elsif ($line =~ /Amber.*alarmed/ && $color eq 'green') { # Green -> Amber
+  $kernel->yield("turned_color", $off_green, $on_amber, 'amber', 'Amber');
+ } elsif ($line =~ /Red.*alarmed/ && $color eq 'amber') { # Amber -> Red
+  $kernel->yield("turned_color", $off_amber, $on_red, 'red', 'Red');
+ }
 }
 
 
 sub turned_color {
- $color = "$_[2]"; # Set color to Green, Amber or Red
- &send_signals($_[0],$_[1]);
-# &log($_[3]);
+ my ($kernel, $heap, $off, $on, $arg2, $state) = @_[KERNEL, HEAP, ARG0, ARG1, ARG2, ARG3];
+ $color = $arg2; # Set color to Green, Amber or Red
+
+ $_[KERNEL]->yield("send_signals" => {cmd => $off});
+ $_[KERNEL]->delay("send_signals", .1, {cmd => $on});
+# $_[KERNEL]->yield("log", $state);
 }
 
 sub send_signals {
- select((select($PORT), $|=1)[0]);
- print $PORT chr(254); # Enter Command Mode
- print $PORT chr($_[0]); # Deactivate Previous Relay
- print $PORT chr($bank); # In Bank 1
- select(undef,undef,undef,.1); # Sleep for .1sec
- print $PORT chr(254); # Enter Command Mode
- print $PORT chr($_[1]); # Activate Current Relay
- print $PORT chr($bank); # In Bank 1
+ my $arg = $_[ARG0];
+ my $cmd = $arg->{cmd};
+ print $PORT chr(254);
+ print $PORT chr($cmd);
+ print $PORT chr(1);
 }
 
 sub log {
@@ -139,3 +140,6 @@ sub turn_relays_off {
  print $PORT chr(29);
  close($PORT);
 }
+
+POE::Kernel->run();
+exit;
