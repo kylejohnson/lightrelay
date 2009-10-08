@@ -143,3 +143,4 @@ sub turn_relays_off {
 
 POE::Kernel->run();
 exit;
+}
