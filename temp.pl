@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-my $port = "/dev/ttyUSB0";
+my $port = "/dev/ttyS0";
 my $cmd = chr(254);
 my $chan = chr(157);
 
