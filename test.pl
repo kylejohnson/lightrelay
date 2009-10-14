@@ -22,12 +22,12 @@ if ($cmd eq "test") {
  # If not, move on to 115200 and do the same thing.
  stty($baud);
  my $answer = send_cmds(27); # I might want to send 34 instead - test.
- if ($answer != 85) {
+ if ($answer == 0) {
   print "Communications with $dev failed at $baud.\n";
   $baud = 38400;
   stty($baud);
   $answer = send_cmds(27); # I might want to send 34 instead - test.
-  if ($answer != 85) {
+  if ($answer == 0) {
    print "Communications with $dev failed at $baud.\n";
    print "Communications failed at both 115200 and 38400!\n";
    print "Maybe the device is broken, or is not connected.\n";
@@ -63,10 +63,17 @@ if ($cmd eq "off") {
 
 
 sub test_relays {
+ my $relay = 1;
  print "Communications succedded at $baud!  Testing indivudual relays...\n";
  my @answers = send_cmds(108, 109, 110, 100, 101, 102);
  foreach (@answers) {
-  print "$_\n";
+  if ($_ == 85) {
+   print "Relay $relay: OK!\n";
+   $relay++;
+  } else {
+   print "Relay $relay: Failure!\n";
+   $relay++;
+  }
  }
 }
 
@@ -74,7 +81,7 @@ sub send_cmds {
  my $answer;
  my @answers;
  foreach my $cmd (@_) {
-  sleep(1);
+  select(undef,undef,undef,.3);
   local $SIG{ALRM} = sub{die "Timed out while trying to communicate at $baud...\n"};
   eval {
    alarm $timeout;
@@ -92,9 +99,7 @@ sub send_cmds {
    alarm 0;
   }
  }
- if ($cmd = 27 && $answer) {
-  return $answer;
- } elsif (@answers) {
+ if (@answers) {
   return @answers;
  } else {
   return 0;
