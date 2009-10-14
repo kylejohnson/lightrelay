@@ -64,22 +64,26 @@ if ($cmd eq "off") {
 
 sub test_relays {
  my $relay = 1;
+ my $status = 'on';
  print "Communications succedded at $baud!  Testing indivudual relays...\n";
  my @answers = send_cmds(108, 109, 110, 100, 101, 102);
  foreach (@answers) {
+  if ($relay == 4) {
+   $status = 'off';
+   $relay = 1;
+  }
   if ($_ == 85) {
-   print "Relay $relay: OK!\n";
+   print "Relay $relay $status: OK!\n";
    $relay++;
   } else {
-   print "Relay $relay: Failure!\n";
+   print "Relay $relay $status: Failure!\n";
    $relay++;
   }
  }
 }
 
 sub send_cmds {
- my $answer;
- my @answers;
+ my ($answer, @answers);
  foreach my $cmd (@_) {
   select(undef,undef,undef,.3);
   local $SIG{ALRM} = sub{die "Timed out while trying to communicate at $baud...\n"};
