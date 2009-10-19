@@ -22,7 +22,6 @@ my $off_amber = 101;
 my $on_red = 110;
 my $off_red = 102;
 my $pid = "/tmp/lightrelay.pid";
-my $PORT;
 # Database Options #
 my $host = 'localhost';
 my $database = 'lightrelay';
@@ -67,8 +66,6 @@ if ($command eq 'restart') {
 if ($command eq 'start') {
  system("/bin/echo $$ > $pid") == 0 || warn("Can't create PID file $pid: $!\n");
  system("/bin/stty $baud ignbrk -brkint -icrnl -imaxbel -opost -isig -icanon -iexten -echo -F $port") == 0 || die "$!\n";
- open($PORT, "+<", "$port") || die("Can't open $port: $!\n");
- select((select($PORT), $|=1)[0]);
 
 POE::Session->create(
  inline_states => {
@@ -96,7 +93,7 @@ sub got_log_line {
  my ($kernel, $heap, $line) = @_[KERNEL, HEAP, ARG0];
 
  if ($line =~ /Green.*alarmed/ && $color eq 'red') { # Red -> Green
-  $kernel->yield("turned_color", $off_red, $on_green, 'green',' Green');
+  $kernel->yield("turned_color", $off_red, $on_green, 'green','Green');
  } elsif ($line =~ /LG.*alarmed/ && $color eq 'red') { # Red -> Left / Green
   $kernel->yield("turned_color", $off_red, $on_green, 'green', 'Left Green');
  } elsif ($line =~ /Amber.*alarmed/ && $color eq 'green') { # Green -> Amber
@@ -112,16 +109,19 @@ sub turned_color {
  $color = $arg2; # Set color to Green, Amber or Red
 
  $_[KERNEL]->yield("send_signals" => {cmd => $off});
- $_[KERNEL]->delay("send_signals", .1, {cmd => $on});
+ $_[KERNEL]->delay("send_signals", .2, {cmd => $on});
  $_[KERNEL]->yield("log", => {state => $state});
 }
 
 sub send_signals {
+ open(my $PORT, "+<", "$port") || die("Can't open $port: $!\n");
+ select((select($PORT), $|=1)[0]);
  my $arg = $_[ARG0];
  my $cmd = $arg->{cmd};
  print $PORT chr(254);
  print $PORT chr($cmd);
  print $PORT chr(1);
+ close($PORT);
 }
 
 sub log {
@@ -137,7 +137,8 @@ sub log {
 }
 
 sub turn_relays_off {
- open($PORT, "+<", "$port") || die("Can't open port $port: $!\n");
+ open(my $PORT, "+<", "$port") || die("Can't open port $port: $!\n");
+ select((select($PORT), $|=1)[0]);
  print $PORT chr(254);
  print $PORT chr(29);
  close($PORT);
