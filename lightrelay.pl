@@ -77,6 +77,7 @@ POE::Session->create(
   got_log_line	=> \&got_log_line,
   turned_color	=> \&turned_color,
   send_signals	=> \&send_signals,
+  log		=> \&log,
  }
 );
 
@@ -112,7 +113,7 @@ sub turned_color {
 
  $_[KERNEL]->yield("send_signals" => {cmd => $off});
  $_[KERNEL]->delay("send_signals", .1, {cmd => $on});
-# $_[KERNEL]->yield("log", $state);
+ $_[KERNEL]->yield("log", $state);
 }
 
 sub send_signals {
@@ -124,14 +125,15 @@ sub send_signals {
 }
 
 sub log {
- my $state = $_[0];
- #open(my $LOGFILE, ">>", "$logfile") or warn "can not open logfile $logfile"; # Open our log file for writing
- #print $LOGFILE "$state\n";
- #close($LOGFILE);
- my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
- my $time = time();
- my $query = $connect->prepare("INSERT INTO history (color, epoch) VALUES ('$state', '$time()')");
- $query->execute();
+ my $arg = $_[ARG0];
+ my $state = $arg->{state};
+ open(my $LOGFILE, ">>", "$logfile") or warn "can not open logfile $logfile"; # Open our log file for writing
+ print $LOGFILE "$state\n";
+ close($LOGFILE);
+ #my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
+ #my $time = time();
+ #my $query = $connect->prepare("INSERT INTO history (color, epoch) VALUES ('$state', '$time()')");
+ #$query->execute();
 }
 
 sub turn_relays_off {
