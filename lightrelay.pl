@@ -113,7 +113,7 @@ sub turned_color {
 
  $_[KERNEL]->yield("send_signals" => {cmd => $off});
  $_[KERNEL]->delay("send_signals", .1, {cmd => $on});
- $_[KERNEL]->yield("log", $state);
+ $_[KERNEL]->yield("log", => {state => $state});
 }
 
 sub send_signals {
