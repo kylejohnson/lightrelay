@@ -22,6 +22,7 @@ my $off_amber = 101;
 my $on_red = 110;
 my $off_red = 102;
 my $pid = "/tmp/lightrelay.pid";
+my ($green_start, $amber_start, $red_start);
 # Database Options #
 my $host = 'localhost';
 my $database = 'lightrelay';
@@ -93,13 +94,17 @@ sub got_log_line {
  my ($kernel, $heap, $line) = @_[KERNEL, HEAP, ARG0];
 
  if ($line =~ /Green.*alarmed/ && $color eq 'red') { # Red -> Green
-  $kernel->yield("turned_color", $off_red, $on_green, 'green','Green');
+  $kernel->yield("turned_color", $off_red, $on_green, 'green', 'Green');
+  $green_start = time;
  } elsif ($line =~ /LG.*alarmed/ && $color eq 'red') { # Red -> Left / Green
   $kernel->yield("turned_color", $off_red, $on_green, 'green', 'Left Green');
+  $green_start = time;
  } elsif ($line =~ /Amber.*alarmed/ && $color eq 'green') { # Green -> Amber
   $kernel->yield("turned_color", $off_green, $on_amber, 'amber', 'Amber');
+  $amber_start = time;
  } elsif ($line =~ /Red.*alarmed/ && $color eq 'amber') { # Amber -> Red
   $kernel->yield("turned_color", $off_amber, $on_red, 'red', 'Red');
+  $red_start = time;
  }
 }
 
@@ -127,8 +132,20 @@ sub send_signals {
 sub log {
  my $arg = $_[ARG0];
  my $state = $arg->{state};
+ my $time = localtime(time);
+ my $duration;
+
+ if ($color eq 'green') {
+  $duration = time - $red_start;
+ } elsif ($color eq 'amber') {
+  $duration = time - $green_start;
+ } elsif ($color eq 'red') {
+  $duration = time - $amber_start;
+ }
+
  open(my $LOGFILE, ">>", "$logfile") or warn "can not open logfile $logfile"; # Open our log file for writing
- print $LOGFILE "$state\n";
+ print $LOGFILE " ($duration)\n";
+ print $LOGFILE "$time:\t $state";
  close($LOGFILE);
  #my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
  #my $time = time();
