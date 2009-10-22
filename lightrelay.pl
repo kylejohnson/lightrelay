@@ -5,6 +5,7 @@ use warnings;
 use POE qw(Wheel::FollowTail);
 use DBI;
 use DBD::mysql;
+use Time::HiRes qw(time);
 
 #### Config Options ####
 my $port = "/dev/ttyS0";
@@ -60,6 +61,7 @@ if ($command eq 'start') {
 POE::Session->create(
  inline_states => {
   _start	=> \&start_watchdog,
+  start_watchdog => \&start_watchdog,
   log		=> \&log,
  }
 );
@@ -92,6 +94,8 @@ POE::Session->create(
 
 sub start_parsing {
  $_[KERNEL]->yield("parse_logfile");
+ my $msg = "Starting server.";
+ $_[KERNEL]->yield("log", => {msg => "$msg"});
 }
 
 sub parse_logfile {
