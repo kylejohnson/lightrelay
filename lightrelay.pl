@@ -21,7 +21,8 @@ my $off_amber = 101;
 my $on_red = 110;
 my $off_red = 102;
 my $pid = "/tmp/lightrelay.pid";
-my ($green_start, $amber_start, $red_start, $duration);
+my $green_start = time();
+my ($amber_start, $red_start, $duration);
 my $amber_timeout = 6;
 my $red_timeout = 120;
 # Database Options #
@@ -155,7 +156,7 @@ sub log {
  my $time = time();
 
  my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
- my $query = $connect->prepare("INSERT INTO log (epoch, msg) VALUES ('$time()', '$msg')");
+ my $query = $connect->prepare("INSERT INTO log (epoch, message) VALUES ('$time()', '$msg')");
  $query->execute();
 }
 
