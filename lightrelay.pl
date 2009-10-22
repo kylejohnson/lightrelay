@@ -72,12 +72,13 @@ sub start_watchdog {
  if (($color eq 'amber') && ((time - $amber_start) >= $amber_timeout)) {
   $color = 'green';
   $msg = "Amber has timed out!  Resetting color to green!";
+ $_[KERNEL]->yield("log", => {msg => "$msg"});
  } elsif (($color eq 'red') && ((time - $red_start) >= $red_timeout)) {
   $color = 'green';
   $msg = "Red has timed out!  Resetting color to green!";
+ $_[KERNEL]->yield("log", => {msg => "$msg"});
  }
 
- $_[KERNEL]->yield("log", => {msg => "$msg"});
  $_[KERNEL]->delay("start_watchdog", .2);
 }
 
