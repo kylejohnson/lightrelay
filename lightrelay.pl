@@ -27,7 +27,7 @@ my $red_timeout = 120;
 # Database Options #
 my $host = 'localhost';
 my $database = 'lightrelay';
-my $table = 'history';
+my $table = 'log';
 my $user = 'lightrelay';
 my $password = 'robot';
 my $dsn = "dbi:mysql:$database:$host";
@@ -79,7 +79,7 @@ POE::Session->create(
 sub start_watchdog {
  if (($color eq 'amber') && ((time - $amber_start) >= $amber_timeout)) {
   $color = 'green';
-  $_[KERNEL]->yield("log", => {msg => "Amber has timed out!  Resetting color to green!\n"});
+  $_[KERNEL]->yield("log", => {msg => "Amber has timed out!  Resetting color to green!"});
  }
  $_[KERNEL]->delay("start_watchdog", .2);
 }
@@ -135,7 +135,7 @@ sub turned_color {
 
  $_[KERNEL]->yield("send_signals" => {cmd => $off});
  $_[KERNEL]->delay("send_signals", .2, {cmd => $on});
- $_[KERNEL]->yield("log", => {state => $state});
+ $_[KERNEL]->yield("log", => {msg => $state});
 }
 
 sub send_signals {
@@ -151,21 +151,12 @@ sub send_signals {
 
 sub log {
  my $arg = $_[ARG0];
- my $state = $arg->{state};
  my $msg = $arg->{msg};
- my $time = localtime(time);
+ my $time = time();
 
- open(my $LOGFILE, ">>", "$logfile") or warn "can not open logfile $logfile";
- if ($state) {
-  print $LOGFILE "$time:\t $state ($duration)\n";
- } elsif ($msg) {
-  print $LOGFILE "$time:\t $msg\n";
- }
- close($LOGFILE);
- #my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
- #my $time = time();
- #my $query = $connect->prepare("INSERT INTO history (color, epoch) VALUES ('$state', '$time()')");
- #$query->execute();
+ my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
+ my $query = $connect->prepare("INSERT INTO log (epoch, msg) VALUES ('$time()', '$msg')");
+ $query->execute();
 }
 
 sub turn_relays_off {
