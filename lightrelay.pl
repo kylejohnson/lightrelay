@@ -72,12 +72,14 @@ if ($command eq 'start') {
 POE::Session->create(
  inline_states => {
   _start	=> \&start_watchdog,
+  log		=> \&log,
  }
 );
 
 sub start_watchdog {
  if (($color eq 'amber') && ((time - $amber_start) >= $amber_timeout)) {
   $color = 'green';
+  $_[KERNEL]->yield("log", => {msg => "Amber has timed out!  Resetting color to green!\n"});
  }
 }
 
@@ -149,11 +151,15 @@ sub send_signals {
 sub log {
  my $arg = $_[ARG0];
  my $state = $arg->{state};
+ my $msg = $arg->{msg};
  my $time = localtime(time);
 
- open(my $LOGFILE, ">>", "$logfile") or warn "can not open logfile $logfile"; # Open our log file for writing
- print $LOGFILE " ($duration)\n";
- print $LOGFILE "$time:\t $state";
+ open(my $LOGFILE, ">>", "$logfile") or warn "can not open logfile $logfile";
+ if ($state) {
+  print $LOGFILE "$time:\t $state ($duration)\n";
+ } elsif ($msg) {
+  print $LOGFILE "$time:\t $msg\n";
+ }
  close($LOGFILE);
  #my $connect = DBI->connect($dsn,$user,$password) or warn "Unable to connect to mysql server $DBI::errstr\n";
  #my $time = time();
