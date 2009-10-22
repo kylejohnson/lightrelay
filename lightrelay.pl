@@ -8,7 +8,6 @@ use DBD::mysql;
 
 #### Config Options ####
 my $port = "/dev/ttyS0";
-my $bank = 1; # Bank number which relays on device belong to
 my $color = 'green'; # Set initial color to Green
 my $logfile = "/var/log/lightrelay.log"; # Where to output color changes to
 my $filename = "/var/www/zm/events/stop-light/dbgpipe.log"; # The file for this script to monitor
@@ -23,6 +22,8 @@ my $on_red = 110;
 my $off_red = 102;
 my $pid = "/tmp/lightrelay.pid";
 my ($green_start, $amber_start, $red_start, $duration);
+my $amber_timeout = 6;
+my $red_timeout = 120;
 # Database Options #
 my $host = 'localhost';
 my $database = 'lightrelay';
@@ -70,7 +71,19 @@ if ($command eq 'start') {
 
 POE::Session->create(
  inline_states => {
-  _start	=> \&server_start,
+  _start	=> \&start_watchdog,
+ }
+);
+
+sub start_watchdog {
+ if (($color eq 'amber') && ((time - $amber_start) >= $amber_timeout)) {
+  $color = 'green';
+ }
+}
+
+POE::Session->create(
+ inline_states => {
+  _start	=> \&start_parsing,
   parse_logfile	=> \&parse_logfile,
   got_log_line	=> \&got_log_line,
   turned_color	=> \&turned_color,
@@ -79,7 +92,7 @@ POE::Session->create(
  }
 );
 
-sub server_start {
+sub start_parsing {
  $_[KERNEL]->yield("parse_logfile");
 }
 
