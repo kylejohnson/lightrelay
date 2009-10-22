@@ -77,13 +77,11 @@ POE::Session->create(
 );
 
 sub start_watchdog {
-while () {
  if (($color eq 'amber') && ((time - $amber_start) >= $amber_timeout)) {
   $color = 'green';
   $_[KERNEL]->yield("log", => {msg => "Amber has timed out!  Resetting color to green!\n"});
  }
- select(undef,undef,undef,.5);
-}
+ $_[KERNEL]->delay("start_watchdog", .2);
 }
 
 POE::Session->create(
