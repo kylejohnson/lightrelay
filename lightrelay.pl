@@ -35,34 +35,21 @@ my $dsn = "dbi:mysql:$database:$host";
 
 
 ##!! Do not change anything below this line !!##
-if (!$command || $command !~ /^(?:start|stop|restart|status|help)$/) {
- print("Usage: lightrelay.pl <start|stop|restart|status|help>\n");
+if (!$command || $command !~ /^(?:start|stop|help)$/) {
+ print("Usage: lightrelay.pl <start|stop|help>\n");
  exit; 
 }
 
 if ($command eq "help") {
  print "start:\t\t Start the program.\n";
  print "stop:\t\t Stop the program.\n";
- print "restart:\t Restart the program.\n";
- print "status:\t\t Displays the current color.\n";
  print "help:\t\t This list.\n";
- exit;
-}
-
-if ($command eq "status") {
- system("/usr/bin/tail -1 $logfile");
  exit;
 }
 
 if ($command eq 'stop') {
  system("/bin/kill `cat /tmp/lightrelay.pid`");
  &turn_relays_off();
- exit;
-}
-
-if ($command eq 'restart') {
- system("/bin/kill `cat /tmp/lightrelay.pid`");
- system("/usr/local/bin/lightrelay.pl start &");
  exit;
 }
 
@@ -78,10 +65,17 @@ POE::Session->create(
 );
 
 sub start_watchdog {
+ my $msg;
+
  if (($color eq 'amber') && ((time - $amber_start) >= $amber_timeout)) {
   $color = 'green';
-  $_[KERNEL]->yield("log", => {msg => "Amber has timed out!  Resetting color to green!"});
+  $msg = "Amber has timed out!  Resetting color to green!";
+ } elsif (($color eq 'red') && ((time - $red_start) >= $red_timeout)) {
+  $color = 'green';
+  $msg = "Red has timed out!  Resetting color to green!";
  }
+
+ $_[KERNEL]->yield("log", => {msg => "$msg"});
  $_[KERNEL]->delay("start_watchdog", .2);
 }
 
