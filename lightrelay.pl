@@ -63,6 +63,7 @@ POE::Session->create(
   _start	=> \&start_watchdog,
   start_watchdog => \&start_watchdog,
   log		=> \&log,
+  send_signals	=> \&send_signals,
  }
 );
 
