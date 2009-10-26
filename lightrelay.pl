@@ -24,8 +24,9 @@ my $off_red = 102;
 my $pid = "/tmp/lightrelay.pid";
 my $green_start = time();
 my ($amber_start, $red_start, $duration);
-my $amber_timeout = 6;
-my $red_timeout = 120;
+my $amber_max = 6;
+my $amber_min = 3.33;
+my $red_max = 120;
 # Database Options #
 my $host = 'localhost';
 my $database = 'lightrelay';
@@ -70,13 +71,13 @@ POE::Session->create(
 sub start_watchdog {
  my $msg;
 
- if (($color eq 'amber') && ((time - $amber_start) >= $amber_timeout)) {
+ if (($color eq 'amber') && ((time - $amber_start) >= $amber_max)) {
   $color = 'green';
   $msg = "Amber has timed out!  Resetting color to green!";
   $_[KERNEL]->yield("log", => {msg => "$msg"});
   $_[KERNEL]->yield("send_signals" => {cmd => $off_amber});
   $_[KERNEL]->delay("send_signals", .2, {cmd => $on_green});
- } elsif (($color eq 'red') && ((time - $red_start) >= $red_timeout)) {
+ } elsif (($color eq 'red') && ((time - $red_start) >= $red_max)) {
   $color = 'green';
   $msg = "Red has timed out!  Resetting color to green!";
   $_[KERNEL]->yield("log", => {msg => "$msg"});
@@ -84,7 +85,7 @@ sub start_watchdog {
   $_[KERNEL]->delay("send_signals", .2, {cmd => $on_green});
  }
 
- $_[KERNEL]->delay("start_watchdog", .2);
+ $_[KERNEL]->yield("start_watchdog");
 }
 
 POE::Session->create(
@@ -126,7 +127,7 @@ sub got_log_line {
   $kernel->yield("turned_color", $off_green, $on_amber, 'amber', 'Amber');
   $amber_start = time;
   $duration = time - $green_start;
- } elsif ($line =~ /Red.*alarmed/ && $color eq 'amber') { # Amber -> Red
+ } elsif ($line =~ /Red.*alarmed/ && $color eq 'amber' && ($duration >= $amber_min)) { # Amber -> Red
   $kernel->yield("turned_color", $off_amber, $on_red, 'red', 'Red');
   $red_start = time;
   $duration = time - $amber_start;
