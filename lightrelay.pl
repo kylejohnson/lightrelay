@@ -127,7 +127,7 @@ sub got_log_line {
   $kernel->yield("turned_color", $off_green, $on_amber, 'amber', 'Amber');
   $amber_start = time;
   $duration = time - $green_start;
- } elsif ($line =~ /Red.*alarmed/ && $color eq 'amber' && ($duration >= $amber_min)) { # Amber -> Red
+ } elsif ($line =~ /Red.*alarmed/ && $color eq 'amber' && ((time - $amber_start) >= $amber_min)) { # Amber -> Red
   $kernel->yield("turned_color", $off_amber, $on_red, 'red', 'Red');
   $red_start = time;
   $duration = time - $amber_start;
