@@ -85,7 +85,7 @@ sub start_watchdog {
   $_[KERNEL]->delay("send_signals", .2, {cmd => $on_green});
  }
 
- $_[KERNEL]->yield("start_watchdog");
+ $_[KERNEL]->delay("start_watchdog", .2);
 }
 
 POE::Session->create(
